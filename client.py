@@ -14,11 +14,10 @@ class Cliente:
             print(f"string: {message}")
             print("Enviando...............")
             sock.send(message.encode('utf-8'))
-            sock.close()
+            resposta = sock.recv(2048)
+            return resposta.decode()
         except socket.error as e: 
             print ("Socket error: %s" %str(e)) 
-
-
 
 if __name__ =="__main__":
     cliente = Cliente()

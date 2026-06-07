@@ -3,6 +3,8 @@ import server
 import client
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gio
+import threading
+
 
 
 class MainWindow(Gtk.ApplicationWindow):
@@ -12,11 +14,10 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.set_title("Simulador de Comunicação Digital")
         self.set_default_size(1600, 1000)
-
-        self.server = server.Servidor()
         self.client = client.Cliente()
-        self.string_tx=""
-        self.string_rx=""
+        self.txBuffer:Gtk.TextBuffer
+        self.rxBuffer:Gtk.TextBuffer
+        
         self.main_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=10,
@@ -25,9 +26,7 @@ class MainWindow(Gtk.ApplicationWindow):
             margin_start=10,
             margin_end=10,
         )
-
         self.set_child(self.main_box)
-
         self.create_configuration_area()
         self.create_center_area()
         self.create_bottom_area()
@@ -129,7 +128,8 @@ class MainWindow(Gtk.ApplicationWindow):
     # --------------------------------------------------
 
     def send_to_rx(self,_button):
-        self.client.send_message(message=self.string_tx)
+        
+        self.rxBuffer= self.client.send_message(message=self.txBuffer.props.text)
         
     def create_center_area(self):
 
@@ -168,6 +168,7 @@ class MainWindow(Gtk.ApplicationWindow):
         app_frame = Gtk.Frame(label="1. APLICAÇÃO DE REDE")
 
         text = Gtk.TextView()
+        self.txBuffer = text.get_buffer()
         text.get_buffer().set_text(
                 "Olá, este é um exemplo de comunicação digital!"
         )
@@ -256,6 +257,9 @@ class MainWindow(Gtk.ApplicationWindow):
         frame.set_child(box)
 
         phy_frame = Gtk.Frame(label="1. CAMADA FÍSICA (RX)")
+
+        
+        
         phy_frame.set_child(Gtk.DrawingArea(height_request=180))
         box.append(phy_frame)
 
@@ -353,9 +357,6 @@ class MainWindow(Gtk.ApplicationWindow):
 
         self.main_box.append(bottom)
 
-    def startSimulation(self):
-        print("opa")
-
 
 class App(Gtk.Application):
 
@@ -368,6 +369,15 @@ class App(Gtk.Application):
         win = MainWindow(self)
         win.present()
 
+th = threading.Thread(target=server.Servidor().start,
+                          daemon=True)
+th.start()
 
 app = App()
 app.run()
+
+th.join()
+
+
+
+
