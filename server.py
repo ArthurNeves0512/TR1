@@ -3,8 +3,7 @@ import socket
 class Servidor:
     def __init__(self):
         pass
-
-
+    
     def start(self,host="localhost",port=8082):
         maximo_de_dado = 2048
         sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -19,7 +18,7 @@ class Servidor:
             data = client.recv(maximo_de_dado)
             if data:
                 print(f"Chegou isso aqui: {data.decode()}")
-                client.send("Eu recebi do cliente e".encode())
+                client.send(data)
             
 
 if __name__ =='__main__':

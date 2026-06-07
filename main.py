@@ -16,7 +16,8 @@ class MainWindow(Gtk.ApplicationWindow):
         self.set_default_size(1600, 1000)
         self.client = client.Cliente()
         self.txBuffer:Gtk.TextBuffer
-        self.rxBuffer:Gtk.TextBuffer
+        self.rxText = Gtk.TextView()
+        self.rxBuffer=self.rxText.get_buffer()
         
         self.main_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
@@ -129,7 +130,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
     def send_to_rx(self,_button):
         
-        self.rxBuffer= self.client.send_message(message=self.txBuffer.props.text)
+        self.rxBuffer.set_text(self.client.send_message(message=self.txBuffer.props.text))
         
     def create_center_area(self):
 
@@ -257,10 +258,8 @@ class MainWindow(Gtk.ApplicationWindow):
         frame.set_child(box)
 
         phy_frame = Gtk.Frame(label="1. CAMADA FÍSICA (RX)")
-
         
-        
-        phy_frame.set_child(Gtk.DrawingArea(height_request=180))
+        phy_frame.set_child(self.rxText)
         box.append(phy_frame)
 
         link_frame = Gtk.Frame(label="2. CAMADA DE ENLACE (RX)")
