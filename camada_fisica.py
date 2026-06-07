@@ -3,18 +3,18 @@ import numpy as np
 class NRZ_POLAR():
 
     def modulation(self,voltageLevel:int,message:str):
-        hex_message = message.encode('utf-8')
-        bit_stream=np.zeros(len(hex_message),dtype=int)
+        message = message.encode('utf-8')
+        bits=''
+        for hex in message:
+            bits = bits+format(hex,'08b')
 
-        for index, byte in 
-        for index,bit in enumerate(bit_stream):
-            if(bit==1):
-                bit_stream[index]=10
-        # for indice,bit in enumerate(bit_stream):
+        voltage_stream=np.zeros(shape=(len(bits)))
         
-
-        # print(f"final: {bit_stream}")
-
+        for index,bit in enumerate(bits):
+            if(bit =='0'):
+                voltage_stream[index]=-voltageLevel
+            else:
+                voltage_stream[index]=voltageLevel
         
             
 
@@ -26,5 +26,5 @@ class NRZ_POLAR():
 if __name__ =="__main__":
 
     nrz_polar = NRZ_POLAR()
-    nrz_polar.modulation(4,"Hello")
+    nrz_polar.modulation(4,"ddddd")
     print("esse arquivo não é executavel")
