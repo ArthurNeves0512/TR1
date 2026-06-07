@@ -1,16 +1,22 @@
 import gi
-import camada_fisica
+import server
+import client
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gio
 
 
 class MainWindow(Gtk.ApplicationWindow):
     def __init__(self, app):
+        
         super().__init__(application=app)
 
         self.set_title("Simulador de Comunicação Digital")
         self.set_default_size(1600, 1000)
 
+        self.server = server.Servidor()
+        self.client = client.Cliente()
+        self.string_tx=""
+        self.string_rx=""
         self.main_box = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             spacing=10,
@@ -114,6 +120,7 @@ class MainWindow(Gtk.ApplicationWindow):
 
         start_btn = Gtk.Button(label="▶ Iniciar Simulação")
         grid.attach(start_btn, 8, 0, 1, 2)
+        start_btn.connect("clicked",self.send_to_rx)
 
         self.main_box.append(frame)
 
@@ -121,6 +128,9 @@ class MainWindow(Gtk.ApplicationWindow):
     # ÁREA CENTRAL
     # --------------------------------------------------
 
+    def send_to_rx(self,_button):
+        self.client.send_message(message=self.string_tx)
+        
     def create_center_area(self):
 
         center = Gtk.Box(
@@ -159,8 +169,10 @@ class MainWindow(Gtk.ApplicationWindow):
 
         text = Gtk.TextView()
         text.get_buffer().set_text(
-            "Olá, este é um exemplo de comunicação digital!"
+                "Olá, este é um exemplo de comunicação digital!"
         )
+
+        self.string_tx=text.get_buffer().props.text
 
         app_frame.set_child(text)
 
@@ -340,6 +352,9 @@ class MainWindow(Gtk.ApplicationWindow):
         bottom.append(stats_frame)
 
         self.main_box.append(bottom)
+
+    def startSimulation(self):
+        print("opa")
 
 
 class App(Gtk.Application):

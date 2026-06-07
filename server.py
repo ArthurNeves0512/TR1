@@ -2,13 +2,10 @@ import socket
 
 class Servidor:
     def __init__(self):
-        self.port=10
-        self.server()
+        pass
 
-    def vamoPrintar(self):
-        print("aaaaaaaaaa")
 
-    def server(self,host="localhost",port=8082):
+    def start(self,host="localhost",port=8082):
         maximo_de_dado = 2048
         sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -26,8 +23,8 @@ class Servidor:
                 client.send("Eu recebi do cliente".encode())
                 client.close()
                 i=i+1
-                if(i>5):
-                    break
+            break
 
 if __name__ =='__main__':
     servidor = Servidor()
+    servidor.start()
