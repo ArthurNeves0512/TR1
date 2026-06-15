@@ -4,14 +4,10 @@ from gi.repository import Gtk
 
 class TxBox:
     def __init__(self):
-        self.config = {
-            "inputText": "",
-            "outputTextDigitalModulation":0,
-            "outputTextAnalogModulation":0
-        }
+
+        self.config = {}
         self.inputText=self.setupInputField()
 
-    
 
     def setupInputField(self)->Gtk.Entry:
         textEntry = Gtk.Entry()
@@ -24,6 +20,8 @@ class TxBox:
         box.pack_start(self.inputText,True,True,0)
         return box
 
+    def update_configuration(self,config):
+        self.config = config
 
         
 
