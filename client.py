@@ -1,24 +1,49 @@
 import socket
-from server import Servidor
-
+# Importe a classe que você criou (ajuste o nome do arquivo se necessário)
+from camada_enlace import CamadaEnlace 
 
 class Cliente:
     def __init__(self):
-        pass
+        self.enlace = CamadaEnlace()
     
-    def send_message(self,host='localhost',port=8082,message=''):
-        sock = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        server_address = (host,port)
+    # --- FUNÇÃO TRADUTORA (Aplicação) ---
+    def texto_para_bits(self, texto: str) -> str:
+        """Converte uma string de texto em uma string de zeros e uns (ASCII)"""
+        bits = ''.join(format(ord(letra), '08b') for letra in texto)
+        return bits
+
+    def send_message(self, host='localhost', port=8082):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_address = (host, port)
         sock.connect(server_address)
+        
         try:
-            print(f"string: {message}")
-            print("Enviando...............")
-            sock.send(message.encode('utf-8'))
+            # 1. Pega a mensagem do usuário via terminal
+            mensagem = input("Digite a mensagem para enviar: ")
+            
+            # 2. Camada de Aplicação (Texto -> Bits)
+            dados_bits = self.texto_para_bits(mensagem)
+            print(f"[Aplicação] Bits gerados: {dados_bits}")
+            
+            # 3. Camada de Enlace TX (Vamos usar Inserção de Bits + CRC como exemplo)
+            quadro_com_erro = self.enlace.enquadramento_crc(dados_bits)
+            quadro_final = self.enlace.enquadramento_insercao_bits(quadro_com_erro)
+            
+            print(f"[Enlace TX] Quadro blindado gerado: {quadro_final}")
+            print("Enviando pelo socket...............")
+            
+            # 4. Envia para o Servidor (O Socket só aceita bytes, então encodamos a string de bits)
+            sock.send(quadro_final.encode('utf-8'))
+            
+            # Recebe a resposta do servidor para saber se chegou bem
             resposta = sock.recv(2048)
-            return resposta.decode()
+            print(f"[Servidor Respondeu]: {resposta.decode()}")
+            
         except socket.error as e: 
-            print ("Socket error: %s" %str(e)) 
+            print("Socket error: %s" % str(e)) 
+        finally:
+            sock.close()
 
-if __name__ =="__main__":
+if __name__ == "__main__":
     cliente = Cliente()
-
+    cliente.send_message()
