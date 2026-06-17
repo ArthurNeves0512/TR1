@@ -11,21 +11,7 @@ class MainWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="Simulador de redes")
 
-        self.servidor = server.Servidor()
-        self.cliente = client.Cliente()
-        
-        self.txBox = TxBox(self.cliente)
-
-        self.rxBox = RxBox(self.servidor)
-
-        self.servidor.set_callback(
-            self.rxBox.on_data_received
-        )
-
-        self.thServer = threading.Thread(target=self.servidor.start,
-                          daemon=True)
-        self.thServer.start()
-
+        self.setupProperties()
         self.add(self.main_layout())
 
     def main_layout(self):
@@ -63,6 +49,22 @@ class MainWindow(Gtk.Window):
         self.txBox.on_send_clicked(self)
         
         
+    def setupProperties(self)->None:
+        self.servidor = server.Servidor()
+        self.cliente = client.Cliente()
+        
+        self.txBox = TxBox(self.cliente)
+
+        self.rxBox = RxBox(self.servidor)
+
+        self.servidor.set_callback(
+            self.rxBox.on_data_received
+        )
+
+        self.thServer = threading.Thread(target=self.servidor.start,
+                          daemon=True)
+        self.thServer.start()
+
 
 if __name__ == "__main__":
 
