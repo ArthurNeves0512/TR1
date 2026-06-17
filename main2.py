@@ -60,7 +60,8 @@ class MainWindow(Gtk.Window):
     def start_simulation_button(self,config):
         self.txBox.update_configuration(config)
         self.rxBox.update_configuration(config)
-        self.txBox.on_send_clicked()
+        self.txBox.on_send_clicked(self)
+        
         
 
 if __name__ == "__main__":
