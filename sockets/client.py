@@ -1,5 +1,5 @@
 import socket
-from server import Servidor
+from sockets.server import Servidor
 
 
 class Cliente:

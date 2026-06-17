@@ -4,9 +4,9 @@ from gi.repository import Gtk
 from interface_grafica.configuration import ConfigurationBox 
 from interface_grafica.rxBox import RxBox
 from interface_grafica.txBox import TxBox
-import server
+import sockets.server as server
 import threading
-import client
+import sockets.client as client
 class MainWindow(Gtk.Window):
     def __init__(self):
         super().__init__(title="Simulador de redes")

@@ -2,7 +2,7 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import GLib
-import server as server
+import sockets.server as server
 from gi.repository import Gtk, GLib
 
 
