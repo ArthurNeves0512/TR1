@@ -3,7 +3,7 @@ import numpy as np
 
 class NrzPolar:
 
-    def modulation(self,voltageLevel:int,message:str)->np.ndarray:
+    def modulation(self,voltageLevel:int,message:str)->str:
         message = message.encode('utf-8')
         bits=''
         for hex in message:
@@ -17,7 +17,7 @@ class NrzPolar:
             else:
                 voltage_stream[index]=voltageLevel
 
-        return voltage_stream
+        return str(voltage_stream)
 
     def desmodulation(self,voltageLevel:int,message:str)->np.ndarray:
         pass
@@ -44,6 +44,30 @@ class Bipolar():
     def desmodulation():
         pass
         
+        
+class MaquinaDeEstados():
+    def __init__(self):
+        pass
+
+    def execute(self,config,msg)->str:
+        return self.execute_digital_modulation(type=config,msg=msg)
+
+
+
+    def execute_digital_modulation(self,type,msg)->str:
+        match type:
+            case 'Nrz Polar':
+                print("NRZ POLAAAR")
+                return NrzPolar().modulation(4,msg)
+            case 'Bipolar':
+                print("Bipolar")
+                return Bipolar().modulation(4,message=msg)
+            case 'Manchester':
+                print("Manchester")
+            case _:
+                print("Opcão invalida como modulacao digital")
+    
+
         
 
 
