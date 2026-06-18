@@ -4,33 +4,49 @@ class CamadaEnlace:
     # 1. ENQUADRAMENTO
     # ==========================================
     
-    def enquadramento_contagem_caracteres(self, dados: str) -> str:
+    # Tamanho fixo (em bits) do cabeçalho de contagem. Com 16 bits conseguimos
+    # contar quadros de até 65535 bits (~8192 caracteres), bem mais do que o
+    # "Tamanho máximo de quadro" configurado na interface (1024).
+    TAMANHO_CABECALHO_CONTAGEM = 16
+
+    def enquadramento_contagem_caracteres(self, dados_bits: str) -> str:
         """
-        Transmissor (TX): Adiciona o tamanho total do quadro no início.
+        Transmissor (TX): Adiciona, no início do quadro, um cabeçalho de
+        tamanho FIXO (16 bits) informando quantos bits de dados vêm a seguir.
+
+        Importante: o cabeçalho guarda esse número em BINÁRIO (não como
+        dígitos decimais soltos), porque o resto do sistema trata tudo como
+        uma sequência de bits ('0'/'1'). Usar um número decimal de tamanho
+        variável (como na versão anterior) só funcionava por acaso para
+        mensagens de exatamente 1 caractere; qualquer mensagem maior já
+        quebrava o desenquadramento.
         """
-        # O tamanho total = tamanho dos dados + 1 (o próprio caractere de contagem)
-        tamanho_total = len(dados) + 1 
-        
-        # Cria o quadro juntando o número e a mensagem
-        quadro = f"{tamanho_total}{dados}"
+        tamanho_dados = len(dados_bits)
+
+        # Converte o tamanho para binário, preenchendo com zeros à esquerda
+        # até ocupar exatamente TAMANHO_CABECALHO_CONTAGEM bits
+        cabecalho = format(tamanho_dados, f'0{self.TAMANHO_CABECALHO_CONTAGEM}b')
+        quadro = cabecalho + dados_bits
         return quadro
 
     def desenquadramento_contagem_caracteres(self, quadro: str) -> str:
         """
-        Receptor (RX): Extrai a mensagem com base no contador inicial.
+        Receptor (RX): Lê os primeiros 16 bits (o cabeçalho) para saber
+        exatamente quantos bits de dados existem, e então extrai só essa
+        quantidade — independente do tamanho da mensagem.
         """
-        # Lê o primeiro caractere do quadro (que é o nosso contador)
-        tamanho_informado = int(quadro[0])
-        
-        # Extrai apenas os dados (ignora o cabeçalho no índice 0)
-        dados_originais = quadro[1:tamanho_informado]
-        return dados_originais    
+        cabecalho = quadro[:self.TAMANHO_CABECALHO_CONTAGEM]
+        tamanho_dados = int(cabecalho, 2)
 
-# ==========================================
+        inicio_dados = self.TAMANHO_CABECALHO_CONTAGEM
+        dados_originais = quadro[inicio_dados: inicio_dados + tamanho_dados]
+        return dados_originais
+
+    # ==========================================
     # 2. ENQUADRAMENTO COM FLAGS (Inserção de Bytes Real)
     # ==========================================
     
-    # Substituímos o '@' e o '/' por suas versões em bytes (8 bits)
+    # FLAGS de 8 bits para o método de inserção de bytes
     FLAG_BYTE = '01111110'
     ESC_BYTE = '01111101'
 
@@ -247,7 +263,7 @@ class CamadaEnlace:
         dados_originais = quadro[:-8]
         
         return dados_originais
-# ==========================================
+    # ==========================================
     # 6. DETECÇÃO DE ERROS: CRC-32 (IEEE 802)
     # ==========================================
     
@@ -307,7 +323,7 @@ class CamadaEnlace:
         dados_originais = quadro[:-32]
         
         return dados_originais
-# ==========================================
+    # ==========================================
     # 7. CORREÇÃO DE ERROS: CÓDIGO DE HAMMING
     # ==========================================
 
