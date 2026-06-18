@@ -53,3 +53,8 @@ class Servidor:
             finally:
                 client.close()
                 print("Conexão encerrada")
+
+
+if __name__=='__main__':
+    servidor = Servidor()
+    servidor.start()

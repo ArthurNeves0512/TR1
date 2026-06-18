@@ -1,5 +1,5 @@
 import socket
-from sockets.server import Servidor
+from camada_fisica import camada_fisica
 
 
 class Cliente:
@@ -21,4 +21,8 @@ class Cliente:
 
 if __name__ =="__main__":
     cliente = Cliente()
+    aa = "a"
+    
+    msgA = camada_fisica.NrzPolar().modulation(4,aa)
+    cliente.send_message(message=msgA)
 

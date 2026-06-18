@@ -3,7 +3,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 from gi.repository import Gtk
-
+from camada_fisica import camada_fisica
 
 class TxBox:
     def __init__(self, cliente):
@@ -25,12 +25,20 @@ class TxBox:
         return box
 
     def on_send_clicked(self, button):
+
+        
+
         mensagem = self.inputText.get_text()
 
-        print("TX enviando:", mensagem)
+
+        maquina_de_estados = camada_fisica.MaquinaDeEstados()
+        
+        mensagem_modularizada = maquina_de_estados.execute(self.config['digital_modulation'],msg=mensagem)
+
+        print("TX enviando:", mensagem_modularizada)
 
         self.cliente.send_message(
-            message=mensagem
+            message=mensagem_modularizada
         )
 
     def update_configuration(self, config):
