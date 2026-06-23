@@ -4,9 +4,10 @@ from gi.repository import Gtk
 
 from gi.repository import Gtk
 from codigo_fisica import camada_fisica
+from sockets import client
 
 class TxBox:
-    def __init__(self, cliente):
+    def __init__(self, cliente:client.Cliente):
         self.cliente = cliente
 
         self.config = {}
@@ -26,19 +27,16 @@ class TxBox:
 
     def on_send_clicked(self, button):
 
-        
-
         mensagem = self.inputText.get_text()
 
-
-        maquina_de_estados = camada_fisica.MaquinaDeEstados()
+        # maquina_de_estados = camada_fisica()
         
-        mensagem_modularizada = maquina_de_estados.execute(self.config['digital_modulation'],msg=mensagem)
+        # mensagem_modularizada = maquina_de_estados.execute(self.config['digital_modulation'],msg=mensagem)
 
-        print("TX enviando:", mensagem_modularizada)
+        print("TX enviando:", mensagem)
 
         self.cliente.send_message(
-            message=mensagem_modularizada
+            mensage=mensagem
         )
 
     def update_configuration(self, config):
