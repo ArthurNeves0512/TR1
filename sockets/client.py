@@ -1,11 +1,11 @@
 import socket
 
-from camada_enlace import CamadaEnlace 
-from camada_fisica import camada_fisica
+from codigo_enlace import camada_enlace  
+from codigo_fisica import camada_fisica
 
 class Cliente:
     def __init__(self):
-        self.enlace = CamadaEnlace()
+        self.enlace = camada_enlace.CamadaEnlace()
     
     # --- FUNÇÃO TRADUTORA (Aplicação) ---
     def texto_para_bits(self, texto: str) -> str:

@@ -3,7 +3,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 from gi.repository import Gtk
-from camada_fisica import camada_fisica
+from codigo_fisica import camada_fisica
 
 class TxBox:
     def __init__(self, cliente):
