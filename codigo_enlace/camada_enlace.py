@@ -1,6 +1,6 @@
 class CamadaEnlace:
 
-    "Enquadramento"
+    # Enquadramento
 
     TAMANHO_CABECALHO_CONTAGEM = 16
 
@@ -265,7 +265,7 @@ class CamadaEnlace:
 
         return dados_originais
     
-# Área de testes local lembrar de apagar depois.
+""" Área de testes local lembrar de apagar depois.
 if __name__ == "__main__":
     enlace = CamadaEnlace()
     
@@ -292,4 +292,4 @@ if __name__ == "__main__":
     
     # O RX vai receber o quadro quebrado, achar a posição, consertar e devolver a mensagem certa!
     mensagem_extraida_com_erro = enlace.desenquadramento_hamming(quadro_corrompido)
-    print(f"[RX] Mensagem SALVA: {mensagem_extraida_com_erro}")
+    print(f"[RX] Mensagem SALVA: {mensagem_extraida_com_erro}")"""
