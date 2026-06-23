@@ -1,6 +1,6 @@
 import gi
-import server
-import client
+import sockets.server as server
+import sockets.client as client
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gio
 import threading
