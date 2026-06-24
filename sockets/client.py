@@ -13,17 +13,16 @@ class Cliente:
         bits = ''.join(format(ord(letra), '08b') for letra in texto)
         return bits
 
-    def send_message(self, host='localhost', port=8082):
+    def send_message(self, mensage:str,host='localhost', port=8082):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_address = (host, port)
         sock.connect(server_address)
         
         try:
-            # 1. Pega a mensagem do usuário via terminal
-            mensagem = input("Digite a mensagem para enviar: ")
+            # 1. Pega a mensage do usuário via terminal
             
             # 2. Camada de Aplicação (Texto -> Bits)
-            dados_bits = self.texto_para_bits(mensagem)
+            dados_bits = self.texto_para_bits(mensage)
             print(f"[Aplicação] Bits gerados: {dados_bits}")
             
             # 3. Camada de Enlace TX (Vamos usar Inserção de Bits + CRC como exemplo)
