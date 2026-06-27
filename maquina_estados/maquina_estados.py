@@ -31,21 +31,50 @@ class MaquinaEstados():
 
     def execute(self):
         print("---------------------------------------------------------------")
-        print(camada_enlace.CamadaEnlace().enquadramento_contagem_caracteres(self.msg))
+        msg_enquadrada = self.execute_framming(self.msg,True)
+        print(msg_enquadrada)
         print("---------------------------------------------------------------")
-        return self.execute_digital_modulation()
+        return self.execute_digital_modulation(msg_enquadrada,True)
 
     def receving(self,array):
-        return camada_fisica.NrzPolar().desmodulation(voltageLevel=4,voltage_stream=array)
+        
+        msg_desmodularizada = self.execute_digital_modulation(array,False)
+        msg_desenquadrada = self.execute_framming(msg_desmodularizada,False)
+        return BitConverter().bits_to_text(msg_desenquadrada)
 
-    def execute_digital_modulation(self)->np.array:
+
+    def execute_framming(self,bits_str,isSending:bool)->str:
+        metodo_framming = self.config['framming_type']
+        if(metodo_framming=='Contagem de Caracteres'):
+            if(isSending):
+                return camada_enlace.CamadaEnlace().enquadramento_contagem_caracteres(bits_str)
+            return camada_enlace.CamadaEnlace().desenquadramento_contagem_caracteres(bits_str)
+        if(metodo_framming=='Inserção Bytes'):
+            if(isSending):
+                return camada_enlace.CamadaEnlace().enquadramento_insercao_bytes(bits_str)
+            return camada_enlace.CamadaEnlace().desenquadramento_insercao_bytes(bits_str)
+        if(metodo_framming=='Inserção Bits'):
+            if(isSending):
+                print("eu entrei aqui")
+                return camada_enlace.CamadaEnlace().enquadramento_insercao_bits(bits_str)
+            return camada_enlace.CamadaEnlace().desenquadramento_insercao_bits(bits_str)
+        
+
+
+    def execute_digital_modulation(self,bits_str,isSending:bool)->np.array:
         voltage_level = int(self.config['voltage_level'])
         if(self.config['digital_modulation']=='Nrz Polar'):
-            return camada_fisica.NrzPolar().modulation(voltageLevel=voltage_level,bits_str=self.msg)
+            if(isSending):
+                return camada_fisica.NrzPolar().modulation(voltageLevel=voltage_level,bits_str=bits_str)
+            return camada_fisica.NrzPolar().desmodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
         if(self.config['digital_modulation']=='Bipolar'):
-            return camada_fisica.Bipolar().modulation(voltageLevel=voltage_level,bits_str=self.msg)
+            if(isSending):
+                return camada_fisica.Bipolar().modulation(voltageLevel=voltage_level,bits_str=bits_str)
+            return camada_fisica.Bipolar().desmodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
         if(self.config['digital_modulation']=='Manchester'):
-            return camada_fisica.Manchester().modulation(voltageLevel=voltage_level,bits_str=self.msg)
+            if(isSending):
+                return camada_fisica.Manchester().modulation(voltageLevel=voltage_level,bits_str=bits_str)
+            return camada_fisica.Manchester().desmodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
 
     def execute_analog_modulation(self):
         pass

@@ -7,6 +7,7 @@ class ConfigurationBox:
         self.config = {
             "digital_modulation": "",
             "analog_modulation":"",
+            "framming_type":"Contagem de Caracteres",
             "voltage_level":10,
             'detect_correct':'',
             'frame_size':8
@@ -19,7 +20,7 @@ class ConfigurationBox:
         self.voltageLevelInputText = self.setupVoltageLevelInputField()
         self.frameSizeInputText = self.setupFrameSizeInputField()
         self.detecting_correting_comboBox= self.setup_detecting_or_correcting_error_comboBox()
-
+        self.framming_type_comboBox = self.setup_framming_type_comboBox()
 
 
     def set_on_start_callback(self,callback):
@@ -73,6 +74,20 @@ class ConfigurationBox:
         self.config["detect_correct"] = widget.get_active_text()
         print(self.config['detect_correct'])
 
+    def setup_framming_type_comboBox(self)->Gtk.ComboBoxText:
+        digital_modulation_comboBox = Gtk.ComboBoxText()
+        digital_modulation_comboBox.append_text("Contagem de Caracteres")
+        digital_modulation_comboBox.append_text("Inserção Bytes")
+        digital_modulation_comboBox.append_text("Inserção Bits")
+        digital_modulation_comboBox.set_active(0)
+        digital_modulation_comboBox.connect("changed",self.setFrammingType)
+        return digital_modulation_comboBox
+    
+    def setFrammingType(self,widget):
+        self.config["framming_type"] = widget.get_active_text()
+        print(self.config["framming_type"])
+
+
     def startSimulationButton(self)->Gtk.Button:
         startButton = Gtk.Button(label="Start Simulation")
         startButton.connect("clicked",self.start_button_callback_trigger)
@@ -104,6 +119,9 @@ class ConfigurationBox:
         box.pack_start(self.voltageLevelInputText,True,True,0)
         box.pack_start(self.frameSizeInputText,True,True,0)
         box.pack_start(self.detecting_correting_comboBox,True,True,0)
+        box.pack_start(self.framming_type_comboBox,True,True,0)
+        
+
 
         box.pack_start(self.start_simulation_button,True,True,0)
         

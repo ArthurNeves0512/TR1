@@ -274,11 +274,3 @@ if __name__ == "__main__":
     
     # Nossa mensagem de 16 bits
     mensagem_bits = "1011100011111000"
-    print(f"Mensagem original:  {mensagem_bits}")
-    print("-" * 65)
-    a = enlace.enquadramento_contagem_caracteres(mensagem_bits)
-    print(a)
-    print("-" * 65)
-    b = enlace.desenquadramento_contagem_caracteres(a)
-    print(b)
-    
