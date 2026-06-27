@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 class NrzPolar:
     def modulation(self, voltageLevel: float, bits_str: str) -> np.ndarray:
-        voltage_stream = np.zeros(shape=(len(bits_str)))
+        voltage_stream = np.zeros(shape=(len(bits_str)),dtype=np.float32)
         for index, bit in enumerate(bits_str):
             voltage_stream[index] = voltageLevel if bit == '1' else -voltageLevel
         return voltage_stream
@@ -19,7 +19,7 @@ class NrzPolar:
 
 class Manchester:
     def modulation(self, voltageLevel: float, bits_str: str) -> np.ndarray:
-        voltage_stream = np.zeros(len(bits_str) * 2)
+        voltage_stream = np.zeros(len(bits_str) * 2,dtype=np.float32)
 
         for i, bit in enumerate(bits_str):
             idx = i * 2
@@ -41,7 +41,7 @@ class Manchester:
 
 class Bipolar:
     def modulation(self, voltageLevel: float, bits_str: str) -> np.ndarray:
-        voltage_stream = np.zeros(len(bits_str))
+        voltage_stream = np.zeros(len(bits_str),dtype=np.float32)
         inversor = 1
 
         for i, bit in enumerate(bits_str):
@@ -69,7 +69,7 @@ class ASK:
         self.fc = fc
 
     def modulation(self, amplitude: float, bits_str: str) -> np.ndarray:
-        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False)
+        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False,dtype=np.float32),
         onda_portadora = amplitude * np.sin(2 * np.pi * self.fc * t)
         onda_morta = np.zeros(self.amostras_por_bit)
 
@@ -104,7 +104,7 @@ class FSK:
         self.fc1 = fc1
 
     def modulation(self, amplitude: float, bits_str: str) -> np.ndarray:
-        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False)
+        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False,dtype=np.float32)
         onda_0 = amplitude * np.sin(2 * np.pi * self.fc0 * t)
         onda_1 = amplitude * np.sin(2 * np.pi * self.fc1 * t)
 
@@ -161,7 +161,7 @@ class QPSK:
         if len(bits_str) % 2 != 0:
             bits_str += '0'
 
-        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False)
+        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False,dtype=np.float32)
         num_simbolos = len(bits_str) // 2
         sinal_transmitido = np.zeros(num_simbolos * self.amostras_por_simbolo)
 
@@ -178,7 +178,7 @@ class QPSK:
 
     def desmodulation(self, amplitude: float, sinal_modulado: np.ndarray) -> str:
         bits_recuperados = ""
-        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False)
+        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False,dtype=np.float32)
 
         for i in range(0, len(sinal_modulado), self.amostras_por_simbolo):
             bloco_sinal = sinal_modulado[i:i + self.amostras_por_simbolo]
