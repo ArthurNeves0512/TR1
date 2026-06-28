@@ -32,10 +32,10 @@ class RxBox:
         mensagem = machine.receving(data)
         print("RX recebeu:", mensagem)
 
-        GLib.idle_add(
-            self.inputText.set_text,
-            mensagem
-        )
+        
+        self.inputText.set_text(mensagem)
+        
+    
 
     def update_configuration(self, config):
         self.config = config

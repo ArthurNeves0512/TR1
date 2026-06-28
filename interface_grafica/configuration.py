@@ -9,7 +9,7 @@ class ConfigurationBox:
             "analog_modulation":"",
             "framming_type":"Contagem de Caracteres",
             "voltage_level":10,
-            'detect_correct':'',
+            'detection_type':'',
             'frame_size':8
         }
         self.on_start_callback = None
@@ -45,7 +45,7 @@ class ConfigurationBox:
         digital_modulation_comboBox.append_text("CRC")
         digital_modulation_comboBox.append_text("Hamming")
         digital_modulation_comboBox.set_active(0)
-        self.config['detect_correct']="Paridade"
+        self.config['detection_type']="Paridade"
         digital_modulation_comboBox.connect("changed",self.set_detecting_or_correcting_error)
         return digital_modulation_comboBox
     
@@ -53,7 +53,7 @@ class ConfigurationBox:
         analog_modulation_comboBox = Gtk.ComboBoxText()
         analog_modulation_comboBox.append_text("ASK")
         analog_modulation_comboBox.append_text("FSK")
-        analog_modulation_comboBox.append_text("PSK")
+        #analog_modulation_comboBox.append_text("PSK") podemos escolher ele ou n ?
         analog_modulation_comboBox.append_text("QPSK")
         analog_modulation_comboBox.append_text("16-QAM")
         analog_modulation_comboBox.set_active(0)

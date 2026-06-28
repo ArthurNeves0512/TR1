@@ -30,7 +30,6 @@ class Servidor:
             print(f"Cliente conectado: {address}")
 
             try:
-                print("to aqui?")
                 dados = bytearray()
 
                 while True:

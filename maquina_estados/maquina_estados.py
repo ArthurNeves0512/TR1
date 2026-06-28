@@ -29,15 +29,23 @@ class MaquinaEstados():
         self.msg = msg
         
 
-    def execute(self):
+    def sending(self):
         print("---------------------------------------------------------------")
         msg_enquadrada = self.execute_framming(self.msg,True)
         print(msg_enquadrada)
         print("---------------------------------------------------------------")
-        return self.execute_digital_modulation(msg_enquadrada,True)
-
-    def receving(self,array):
-        
+        msg_digital_modulation= self.execute_digital_modulation(msg_enquadrada,True)
+        # print("AQUI A MSG DEPOIS DE FAZER O DIGITAL",msg_digital_modulation)
+        print("FAZENDO ANALOG ---------------------------------------------------------------")
+        a = self.execute_analog_modulation(msg_enquadrada,True)
+        # print(a)
+        print("FIZ ANALOG---------------------------------------------------------------")
+        return msg_digital_modulation
+    
+    def receving(self,array:np.array):
+        print("chegou isso aqui para desmodularizar", array)
+        # msg_desmodularizada = self.execute_analog_modulation(array,False)    
+        # print("esses são os bits desmodularizados",msg_desmodularizada)
         msg_desmodularizada = self.execute_digital_modulation(array,False)
         msg_desenquadrada = self.execute_framming(msg_desmodularizada,False)
         return BitConverter().bits_to_text(msg_desenquadrada)
@@ -76,5 +84,22 @@ class MaquinaEstados():
                 return camada_fisica.Manchester().modulation(voltageLevel=voltage_level,bits_str=bits_str)
             return camada_fisica.Manchester().desmodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
 
-    def execute_analog_modulation(self):
+    def execute_analog_modulation(self,bits,isSending:bool):
+        analog_modulation = self.config['analog_modulation']
+        if(analog_modulation =='ASK'):
+            if(isSending):
+                return camada_fisica.ASK().modulation(self.config['voltage_level'],bits_str=bits)
+            return camada_fisica.ASK().desmodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits)
+        if(analog_modulation =='FSK'):
+            if(isSending):
+                return camada_fisica.FSK().modulation(self.config['voltage_level'],bits_str=bits)
+            return camada_fisica.FSK().desmodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits)
+        if(analog_modulation =='QPSK'):
+            if(isSending):
+                return camada_fisica.QPSK().modulation(self.config['voltage_level'],bits_str=bits)
+            return camada_fisica.QPSK().desmodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits)
+        if(analog_modulation =='16-QAM'):
+            if(isSending):
+                return camada_fisica.QAM16().modulation(self.config['voltage_level'],bits_str=bits)
+            return camada_fisica.QAM16().desmodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits)
         pass

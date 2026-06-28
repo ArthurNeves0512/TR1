@@ -32,10 +32,8 @@ class TxBox:
         converter_bits = maquina_estados.BitConverter()
         mensagem = converter_bits.text_to_bits(mensagem)
         state_machine = maquina_estados.MaquinaEstados(self.config,mensagem)
-        b = state_machine.execute()
-        print("mensagem:", mensagem)
+        b = state_machine.sending()
         print("TX enviando:", b)
-
         self.cliente.send_message(
             array=b
         )

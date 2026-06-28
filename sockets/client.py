@@ -24,8 +24,7 @@ class Cliente:
             
             # 2. Camada de Aplicação (Texto -> Bits)
             # dados_bits = self.texto_para_bits(mensage)
-            print(f"[Aplicação] Bits gerados: {array}")
-            
+                        
             # 3. Camada de Enlace TX (Vamos usar Inserção de Bits + CRC como exemplo)
             # quadro_com_erro = self.enlace.enquadramento_crc(dados_bits)
             # quadro_final = self.enlace.enquadramento_insercao_bits(quadro_com_erro)
@@ -34,6 +33,7 @@ class Cliente:
             # print("Enviando pelo socket...............")
             
             # 4. Envia para o Servidor (O Socket só aceita bytes, então encodamos a string de bits)
+            print("enviando",array)
             sock.sendall(array.tobytes())
             
             # Recebe a resposta do servidor para saber se chegou bem
