@@ -257,7 +257,7 @@ class Canal:
         return sinal + ruido
 
     """"# Área de testes local lembrar de apagar depois."""
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # # Configurações de teste
     # bits_originais = "10110010" # 8 bits é perfeito pois é divisível por 2 (QPSK) e 4 (16-QAM)
     # tensao = 1.0
@@ -331,10 +331,3 @@ if __name__ == '__main__':
     # for nome, data in resultados.items():
     #     status = "OK" if data['bits'] == bits_originais else "ERRO"
     #     print(f"{nome.ljust(12)} -> {data['bits']} [{status}]")
-    a= ASK().modulation(amplitude=1,bits_str='10001111')
-    b = ASK().desmodulation(amplitude=1,sinal_modulado=a)
-    plt.plot(a)
-    plt.plot(b)
-    plt.show()
-    print(a)
-    print(b)
