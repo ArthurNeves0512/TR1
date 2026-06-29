@@ -64,29 +64,29 @@ class MaquinaEstados():
         if(modulation=='Nrz Polar'):
             if(isSending):
                 return camada_fisica.NrzPolar().modulation(voltageLevel=voltage_level,bits_str=bits_str)
-            return camada_fisica.NrzPolar().desmodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
+            return camada_fisica.NrzPolar().demodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
         elif(modulation=='Bipolar'):
             if(isSending):
                 return camada_fisica.Bipolar().modulation(voltageLevel=voltage_level,bits_str=bits_str)
-            return camada_fisica.Bipolar().desmodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
+            return camada_fisica.Bipolar().demodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
         elif(modulation=='Manchester'):
             if(isSending):
                 return camada_fisica.Manchester().modulation(voltageLevel=voltage_level,bits_str=bits_str)
-            return camada_fisica.Manchester().desmodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
+            return camada_fisica.Manchester().demodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
         elif(modulation =='ASK'):
             if(isSending):
                 return camada_fisica.ASK().modulation(self.config['voltage_level'],bits_str=bits_str)
-            return camada_fisica.ASK().desmodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits_str)
+            return camada_fisica.ASK().demodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits_str)
         elif(modulation =='FSK'):
             if(isSending):
                 return camada_fisica.FSK().modulation(self.config['voltage_level'],bits_str=bits_str)
-            return camada_fisica.FSK().desmodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits_str)
+            return camada_fisica.FSK().demodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits_str)
         elif(modulation =='QPSK'):
             if(isSending):
                 return camada_fisica.QPSK().modulation(self.config['voltage_level'],bits_str=bits_str)
-            return camada_fisica.QPSK().desmodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits_str)
+            return camada_fisica.QPSK().demodulation(bits_str)
         elif(modulation =='16-QAM'):
             if(isSending):
                 return camada_fisica.QAM16().modulation(self.config['voltage_level'],bits_str=bits_str)
-            return camada_fisica.QAM16().desmodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits_str)
+            return camada_fisica.QAM16().demodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits_str)
         
