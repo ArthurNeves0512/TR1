@@ -88,5 +88,5 @@ class MaquinaEstados():
         elif(modulation =='16-QAM'):
             if(isSending):
                 return camada_fisica.QAM16().modulation(self.config['voltage_level'],bits_str=bits_str)
-            return camada_fisica.QAM16().demodulation(amplitude=self.config['voltage_level'],sinal_modulado=bits_str)
+            return camada_fisica.QAM16().demodulation(self.config['voltage_level'],bits_str=bits_str)
         
