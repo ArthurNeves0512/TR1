@@ -211,11 +211,9 @@ class QPSK:
 
             sinal = sinal_recebido[inicio:fim]
 
-            # Correlação
             I = np.dot(sinal, cos)
             Q = np.dot(sinal, sen)
-
-            # Decisão
+            
             I = 1 if I >= 0 else -1
             Q = 1 if Q >= 0 else -1
 
