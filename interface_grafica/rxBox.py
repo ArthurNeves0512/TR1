@@ -12,7 +12,7 @@ class RxBox:
         self.servidor = servidor
 
         self.inputText = self.setupReceivedField()
-
+        self.error_label = Gtk.Label(label="")
         self.servidor.set_callback(self.on_data_received)
 
     def setupReceivedField(self) -> Gtk.Entry:

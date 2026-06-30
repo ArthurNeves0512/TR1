@@ -45,12 +45,12 @@ class ConfigurationBox:
     
     def setup_detecting_or_correcting_error_comboBox(self)->Gtk.ComboBoxText:
         digital_modulation_comboBox = Gtk.ComboBoxText()
-        digital_modulation_comboBox.append_text("Paridade")
+        digital_modulation_comboBox.append_text("Paridade Par")
         digital_modulation_comboBox.append_text("CheckSum")
         digital_modulation_comboBox.append_text("CRC")
         digital_modulation_comboBox.append_text("Hamming")
         digital_modulation_comboBox.set_active(0)
-        self.config['detection_type']="Paridade"
+        self.config['detection_type']="Paridade Par"
         digital_modulation_comboBox.connect("changed",self.set_detecting_or_correcting_error)
         return digital_modulation_comboBox
 

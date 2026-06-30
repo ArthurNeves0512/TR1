@@ -183,7 +183,10 @@ class MaquinaEstados():
                 result = camada_fisica.NrzPolar().modulation(voltageLevel=voltage_level,bits_str=bits_str)
                 plot_sinal_digital(result,"NRZ Polar")
                 return result
-            return camada_fisica.NrzPolar().demodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
+            a =camada_fisica.NrzPolar().demodulation(voltageLevel=voltage_level,voltage_stream=bits_str)
+            print("FINALLALLLLA",a)
+            print("-"*90)
+            return a
         elif(modulation=='Bipolar'):
             if(isSending):
                 result= camada_fisica.Bipolar().modulation(voltageLevel=voltage_level,bits_str=bits_str)
@@ -220,4 +223,7 @@ class MaquinaEstados():
                 plot_sinal_analogico(result,titulo="16-QAM")
                 return result
             return camada_fisica.QAM16().demodulation(self.config['voltage_level'],bits_str=bits_str)
+    
+    def execute_detect(self,bits,isSending):
+        pass
         

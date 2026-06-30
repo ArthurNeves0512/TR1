@@ -37,6 +37,7 @@ class CamadaEnlace:
         
         #aqui é multiplicando por 8 para transformar em bits, apenas isso.
         cabecalho = format(tamanho_dados, f'0{self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8}b')
+        dados_bits = self.setup_inserir_redundencia(dados_bits,self.config['detection_type'])
         quadro = cabecalho + dados_bits
         return quadro
 
@@ -69,6 +70,24 @@ class CamadaEnlace:
         
         return quadro
 
+
+    def setup_inserir_redundencia(self,bits_str,tipo_detector):
+        if(tipo_detector=='Paridade Par'):
+            return self.enquadramento_paridade_par(dados_bits=bits_str)
+        if(tipo_detector=='CheckSum'):
+            return self.enquadramento_checksum(dados_bits=bits_str)
+        if(tipo_detector=='CRC'):
+            return self.enquadramento_crc(dados_bits=bits_str)
+        
+    def setup_conferir_redundencia(self,quadro,tipo_detector):
+        if(tipo_detector=='Paridade Par'):
+            return self.desenquadramento_paridade_par(quadro=quadro)
+        if(tipo_detector=='CheckSum'):
+            return self.desenquadramento_checksum(quadro=quadro)
+        if(tipo_detector=='CRC'):
+            return self.desenquadramento_crc(quadro=quadro)
+    
+        
     def desenquadramento_insercao_bytes(self, quadro: str) -> str:
 
         miolo_do_quadro = quadro[8:-8]
