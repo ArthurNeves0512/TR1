@@ -1,3 +1,25 @@
+import numpy as np
+class Canal:
+
+    def __init__(self, media=0.0, sigma=0.1):
+        self.media = media
+        self.sigma = sigma
+
+    def transmitir(self, sinal):
+        ruido = np.random.normal(
+            loc=self.media,
+            scale=self.sigma,
+            size=sinal.shape
+        ).astype(sinal.dtype)
+
+        out = sinal + ruido
+        out = np.nan_to_num(out)
+        out = np.clip(out, -100, 100)
+
+        return out
+    
+
+
 class CamadaEnlace:
     
     def __init__(self,config=None):
