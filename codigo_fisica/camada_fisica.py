@@ -124,7 +124,6 @@ class FSK:
                 sinal[idx:idx + self.amostras_por_bit] = onda_0
 
         return sinal
-    
 
     
     def desmodulation(self, amplitude: float, sinal_modulado: np.ndarray) -> str:
