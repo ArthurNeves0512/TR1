@@ -1,24 +1,27 @@
 class CamadaEnlace:
+    
+    def __init__(self,config=None):
+        self.config = config
+        self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM = 4
 
     # Enquadramento
 
-    TAMANHO_CABECALHO_CONTAGEM = 16
+    
 
     def enquadramento_contagem_caracteres(self, dados_bits: str) -> str:
-        # Faz polling até ocupar exatamente TAMANHO_CABECALHO_CONTAGEM
-
-        tamanho_dados = len(dados_bits)
-        cabecalho = format(tamanho_dados, f'0{self.TAMANHO_CABECALHO_CONTAGEM}b')
+        # pega o tamanho em bytes da string de bits, então um 0000 11111 vai dar tamanho_dados = 1
+        tamanho_dados = int(len(dados_bits)/8)
+        #aqui é multiplicando por 8 para transformar em bits, apenas isso.
+        cabecalho = format(tamanho_dados, f'0{self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8}b')
         quadro = cabecalho + dados_bits
         return quadro
 
     def desenquadramento_contagem_caracteres(self, quadro: str) -> str:
-
-        cabecalho = quadro[:self.TAMANHO_CABECALHO_CONTAGEM]
+        cabecalho = quadro[:self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8]
+        #indica que a string(vulgos os bits) então em base 2.
         tamanho_dados = int(cabecalho, 2)
-
-        inicio_dados = self.TAMANHO_CABECALHO_CONTAGEM
-        dados_originais = quadro[inicio_dados: inicio_dados + tamanho_dados]
+        inicio_dados = self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8
+        dados_originais = quadro[inicio_dados: inicio_dados + tamanho_dados*8]
         return dados_originais
 
     # ENQUADRAMENTO COM FLAGS e inserção de bytes ou caracteres
@@ -265,31 +268,9 @@ class CamadaEnlace:
 
         return dados_originais
     
-""" Área de testes local lembrar de apagar depois.
+
 if __name__ == "__main__":
     enlace = CamadaEnlace()
     
-    # Nossa mensagem de 4 bits (Clássico Hamming 7,4)
-    mensagem_bits = "1011"
-    print(f"Mensagem original:  {mensagem_bits}")
-    print("-" * 65)
-    
-    # 1. TX posiciona e calcula as paridades
-    quadro_enviado = enlace.enquadramento_hamming(mensagem_bits)
-    print(f"[TX] Quadro Hamming: {quadro_enviado}")
-    
-    print("\n--- TESTE 1: Transmissão Perfeita ---")
-    mensagem_extraida = enlace.desenquadramento_hamming(quadro_enviado)
-    print(f"[RX] Mens. extraída: {mensagem_extraida}")
-    
-    print("\n--- TESTE 2: Sofrendo Ruído (Invertendo o 6º bit) ---")
-    # Forçando um erro no meio do caminho (posição 6, índice 5)
-    quadro_lista = list(quadro_enviado)
-    quadro_lista[5] = '0' if quadro_lista[5] == '1' else '1'
-    quadro_corrompido = "".join(quadro_lista)
-    
-    print(f"[Canal] O quadro chegou quebrado: {quadro_corrompido}")
-    
-    # O RX vai receber o quadro quebrado, achar a posição, consertar e devolver a mensagem certa!
-    mensagem_extraida_com_erro = enlace.desenquadramento_hamming(quadro_corrompido)
-    print(f"[RX] Mensagem SALVA: {mensagem_extraida_com_erro}")"""
+    # Nossa mensagem de 16 bits
+    mensagem_bits = "1011100011111000"

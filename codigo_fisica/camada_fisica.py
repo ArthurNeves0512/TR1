@@ -5,21 +5,23 @@ import matplotlib.pyplot as plt
 
 class NrzPolar:
     def modulation(self, voltageLevel: float, bits_str: str) -> np.ndarray:
-        voltage_stream = np.zeros(shape=(len(bits_str)))
+        voltage_stream = np.zeros(shape=(len(bits_str)),dtype=np.float32)
         for index, bit in enumerate(bits_str):
             voltage_stream[index] = voltageLevel if bit == '1' else -voltageLevel
         return voltage_stream
 
-    def desmodulation(self, voltageLevel: float, voltage_stream: np.ndarray) -> str:
+    def demodulation(self, voltageLevel: float, voltage_stream: np.ndarray) -> str:
         bits = ''
+        voltage_stream = np.asarray(voltage_stream, dtype=np.float32)
         for voltage in voltage_stream:
+            print(type(voltage), voltage)
             bits += '1' if voltage > 0 else '0'
         return bits
 
 
 class Manchester:
     def modulation(self, voltageLevel: float, bits_str: str) -> np.ndarray:
-        voltage_stream = np.zeros(len(bits_str) * 2)
+        voltage_stream = np.zeros(len(bits_str) * 2,dtype=np.float32)
 
         for i, bit in enumerate(bits_str):
             idx = i * 2
@@ -32,7 +34,7 @@ class Manchester:
 
         return voltage_stream
 
-    def desmodulation(self, voltageLevel: float, voltage_stream: np.ndarray) -> str:
+    def demodulation(self, voltageLevel: float, voltage_stream: np.ndarray) -> str:
         bits_recuperados = ""
         for i in range(0, len(voltage_stream), 2):
             primeira_metade = voltage_stream[i]
@@ -41,7 +43,7 @@ class Manchester:
 
 class Bipolar:
     def modulation(self, voltageLevel: float, bits_str: str) -> np.ndarray:
-        voltage_stream = np.zeros(len(bits_str))
+        voltage_stream = np.zeros(len(bits_str),dtype=np.float32)
         inversor = 1
 
         for i, bit in enumerate(bits_str):
@@ -53,7 +55,7 @@ class Bipolar:
 
         return voltage_stream
 
-    def desmodulation(self, voltageLevel: float, voltage_stream: np.ndarray) -> str:
+    def demodulation(self, voltageLevel: float, voltage_stream: np.ndarray) -> str:
         bits_recuperados = ""
         limiar = voltageLevel / 2
         for tensao in voltage_stream:
@@ -69,31 +71,33 @@ class ASK:
         self.fc = fc
 
     def modulation(self, amplitude: float, bits_str: str) -> np.ndarray:
-        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False)
-        onda_portadora = amplitude * np.sin(2 * np.pi * self.fc * t)
+        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False,dtype=np.float32)
+        onda_portadora = amplitude * np.sin(2 * np.pi * self.fc *t)
         onda_morta = np.zeros(self.amostras_por_bit)
 
-        sinal_transmitido = np.zeros(len(bits_str) * self.amostras_por_bit)
+        sinal_transmitido = np.zeros(len(bits_str) * self.amostras_por_bit,dtype=np.float32)
         
         for i, bit in enumerate(bits_str):
             idx_inicio = i * self.amostras_por_bit
             idx_fim = idx_inicio + self.amostras_por_bit
-            sinal_transmitido[idx_inicio:idx_fim] = onda_portadora if bit == '1' else onda_morta
-
+            
+            sinal_transmitido[idx_inicio:idx_fim] = onda_portadora if float(bit) == 1 else onda_morta
         return sinal_transmitido
 
-    def desmodulation(self, amplitude: float, sinal_modulado: np.ndarray) -> str:
-        bits_recuperados = ""
-        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False)
+    def demodulation(self, amplitude: float, sinal_modulado: np.ndarray) -> str:
+        bits_recuperados:str = ""
+        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False,dtype=np.float32)
         onda_referencia = np.sin(2 * np.pi * self.fc * t)
-
         energia_bit_um = amplitude * np.sum(onda_referencia ** 2)
         limiar = energia_bit_um / 2
 
         for i in range(0, len(sinal_modulado), self.amostras_por_bit):
             bloco_sinal = sinal_modulado[i:i + self.amostras_por_bit]
             correlacao = np.sum(bloco_sinal * onda_referencia)
-            bits_recuperados += '1' if correlacao > limiar else '0'
+            if(correlacao > limiar):
+                bits_recuperados = bits_recuperados+"1"
+            else:
+                bits_recuperados = bits_recuperados+"0"
 
         return bits_recuperados
 
@@ -102,150 +106,241 @@ class FSK:
         self.amostras_por_bit = amostras_por_bit
         self.fc0 = fc0
         self.fc1 = fc1
+        self.t = np.linspace(0, 1, amostras_por_bit, endpoint=False, dtype=np.float32)
 
     def modulation(self, amplitude: float, bits_str: str) -> np.ndarray:
-        t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False)
-        onda_0 = amplitude * np.sin(2 * np.pi * self.fc0 * t)
-        onda_1 = amplitude * np.sin(2 * np.pi * self.fc1 * t)
 
-        sinal_transmitido = np.zeros(len(bits_str) * self.amostras_por_bit)
-        
+        onda_0 = amplitude * np.sin(2 * np.pi * self.fc0 * self.t)
+        onda_1 = amplitude * np.sin(2 * np.pi * self.fc1 * self.t)
+
+        sinal = np.zeros(len(bits_str) * self.amostras_por_bit, dtype=np.float32)
+
         for i, bit in enumerate(bits_str):
-            idx_inicio = i * self.amostras_por_bit
-            idx_fim = idx_inicio + self.amostras_por_bit
-            sinal_transmitido[idx_inicio:idx_fim] = onda_1 if bit == '1' else onda_0
+            idx = i * self.amostras_por_bit
 
-        return sinal_transmitido
+            if bit == '1':
+                sinal[idx:idx + self.amostras_por_bit] = onda_1
+            else:
+                sinal[idx:idx + self.amostras_por_bit] = onda_0
 
-    def desmodulation(self, amplitude: float, sinal_modulado: np.ndarray) -> str:
-        bits_recuperados = ""
-        # Como o t vai de 0 a 1 segundo, a frequencia de amostragem (fs) e igual ao numero de amostras
-        fs = self.amostras_por_bit 
+        return sinal
+    
+
+    
+    def demodulation(self, amplitude: float, sinal_modulado: np.ndarray) -> str:
+
+        bits = ""
+
+        ref0 = amplitude*np.sin(2 * np.pi * self.fc0 * self.t)
+        ref1 = amplitude*np.sin(2 * np.pi * self.fc1 * self.t)
 
         for i in range(0, len(sinal_modulado), self.amostras_por_bit):
-            bloco_sinal = sinal_modulado[i:i + self.amostras_por_bit]
-            
-            # Aplica a Transformada de Fourier
-            fft_result = np.fft.fft(bloco_sinal)
-            freqs = np.fft.fftfreq(len(bloco_sinal), d=1/fs)
-            
-            # Pega apenas a parte positiva do espectro
-            metade = len(freqs) // 2
-            espectro_positivo = np.abs(fft_result[:metade])
-            freqs_positivas = freqs[:metade]
-            
-            # Encontra a frequencia com a maior magnitude (pico)
-            idx_pico = np.argmax(espectro_positivo)
-            freq_predominante = freqs_positivas[idx_pico]
-            
-            # Decide o bit pela proximidade com as portadoras
-            if abs(freq_predominante - self.fc1) < abs(freq_predominante - self.fc0):
-                bits_recuperados += '1'
-            else:
-                bits_recuperados += '0'
 
-        return bits_recuperados
+            bloco = sinal_modulado[i:i + self.amostras_por_bit]
+
+            corr0 = np.dot(bloco, ref0) 
+            corr1 = np.dot(bloco, ref1) 
+
+            if corr1 > corr0:
+                bits += "1"
+            else:
+                bits += "0"
+
+        return bits
 
 class QPSK:
     def __init__(self, amostras_por_simbolo=200, fc=2):
         self.amostras_por_simbolo = amostras_por_simbolo
         self.fc = fc
-        self.fases = {
-            '00': np.pi / 4,
-            '01': 3 * np.pi / 4,
-            '11': 5 * np.pi / 4,
-            '10': 7 * np.pi / 4,
+        
+        self.constelacao={
+            '00': {'I':-1,'Q':-1},
+            '01': {'I':-1,'Q':1},
+            '11': {'I':1,'Q':1},
+            '10': {'I':1,'Q':-1},
+        }
+        self.constelacao_rx = {
+            (-1, -1): '00',
+            (-1,  1): '01',
+            ( 1,  1): '11',
+            ( 1, -1): '10',
         }
 
     def modulation(self, amplitude: float, bits_str: str) -> np.ndarray:
         if len(bits_str) % 2 != 0:
             bits_str += '0'
 
-        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False)
+        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False,dtype=np.float32)
         num_simbolos = len(bits_str) // 2
-        sinal_transmitido = np.zeros(num_simbolos * self.amostras_por_simbolo)
+        sinal_transmitido = np.zeros(num_simbolos * self.amostras_por_simbolo,dtype=np.float32)
+        cos = np.cos(2 * np.pi * self.fc * t)
+        sen = - np.sin(2 * np.pi * self.fc * t)
+        for contador_de_amostras, iterador_bits in enumerate(range(0, len(bits_str), 2)):
+            i_bit = bits_str[iterador_bits]
+            q_bit = bits_str[iterador_bits+1]
+            I_t= self.constelacao[i_bit+q_bit].get('I')*cos*amplitude
+            Q_t = self.constelacao[i_bit+q_bit].get('Q')*sen*amplitude
+            sinal_final = I_t + Q_t
 
-        for j, i in enumerate(range(0, len(bits_str), 2)):
-            dibit = bits_str[i:i + 2]
-            fase = self.fases[dibit]
-            onda = amplitude * np.sin(2 * np.pi * self.fc * t + fase)
-            
-            idx_inicio = j * self.amostras_por_simbolo
-            idx_fim = idx_inicio + self.amostras_por_simbolo
-            sinal_transmitido[idx_inicio:idx_fim] = onda
-
+            inicio = contador_de_amostras * self.amostras_por_simbolo
+            fim = inicio + self.amostras_por_simbolo
+            sinal_transmitido[inicio:fim] = sinal_final
         return sinal_transmitido
 
-    def desmodulation(self, amplitude: float, sinal_modulado: np.ndarray) -> str:
-        bits_recuperados = ""
-        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False)
+    def demodulation(self, sinal_recebido: np.ndarray) -> str:
 
-        for i in range(0, len(sinal_modulado), self.amostras_por_simbolo):
-            bloco_sinal = sinal_modulado[i:i + self.amostras_por_simbolo]
+        t = np.linspace(
+            0,
+            1,
+            self.amostras_por_simbolo,
+            endpoint=False,
+            dtype=np.float32
+        )
 
-            correlacao_i = np.sum(bloco_sinal * np.sin(2 * np.pi * self.fc * t))
-            correlacao_q = np.sum(bloco_sinal * np.cos(2 * np.pi * self.fc * t))
+        cos = np.cos(2 * np.pi * self.fc * t)
+        sen = -np.sin(2 * np.pi * self.fc * t)
 
-            angulo = np.arctan2(correlacao_q, correlacao_i)
-            if angulo < 0:
-                angulo += 2 * np.pi
+        bits = ""
 
-            dibit_recuperado = min(self.fases.keys(), key=lambda k: abs(angulo - self.fases[k]))
-            bits_recuperados += dibit_recuperado
+        num_simbolos = len(sinal_recebido) // self.amostras_por_simbolo
 
-        return bits_recuperados
+        for simbolo in range(num_simbolos):
+
+            inicio = simbolo * self.amostras_por_simbolo
+            fim = inicio + self.amostras_por_simbolo
+
+            sinal = sinal_recebido[inicio:fim]
+
+            I = np.dot(sinal, cos)
+            Q = np.dot(sinal, sen)
+            
+            I = 1 if I >= 0 else -1
+            Q = 1 if Q >= 0 else -1
+
+            bits += self.constelacao_rx[(I, Q)]
+
+        return bits
 
 class QAM16:
+
     def __init__(self, amostras_por_simbolo=200, fc=2):
+
         self.amostras_por_simbolo = amostras_por_simbolo
         self.fc = fc
-        self.niveis = {'00': -3, '01': -1, '10': 1, '11': 3}
-        self.niveis_reverso = {-3: '00', -1: '01', 1: '10', 3: '11'}
 
-    def modulation(self, amplitude_base: float, bits_str: str) -> np.ndarray:
+        sqrt_two = np.sqrt(2)
+
+        self.constelacao = {
+
+            '0000': {'I':-1/(3*sqrt_two),'Q':-1/(3*sqrt_two)},
+            '0001': {'I':-1/(3*sqrt_two),'Q':-1/sqrt_two},
+            '0010': {'I':-1/sqrt_two,'Q':-1/(3*sqrt_two)},
+            '0011': {'I':-1/sqrt_two,'Q':-1/sqrt_two},
+
+            '0100': {'I':-1/(3*sqrt_two),'Q': 1/(3*sqrt_two)},
+            '0101': {'I':-1/(3*sqrt_two),'Q': 1/sqrt_two},
+            '0110': {'I':-1/sqrt_two,'Q': 1/(3*sqrt_two)},
+            '0111': {'I':-1/sqrt_two,'Q': 1/sqrt_two},
+
+            '1000': {'I': 1/(3*sqrt_two),'Q':-1/(3*sqrt_two)},
+            '1001': {'I': 1/(3*sqrt_two),'Q':-1/sqrt_two},
+            '1010': {'I': 1/sqrt_two,'Q':-1/(3*sqrt_two)},
+            '1011': {'I': 1/sqrt_two,'Q':-1/sqrt_two},
+
+            '1100': {'I': 1/(3*sqrt_two),'Q': 1/(3*sqrt_two)},
+            '1101': {'I': 1/(3*sqrt_two),'Q': 1/sqrt_two},
+            '1110': {'I': 1/sqrt_two,'Q': 1/(3*sqrt_two)},
+            '1111': {'I': 1/sqrt_two,'Q': 1/sqrt_two},
+        }
+
+    def modulation(self, amplitude, bits_str):
+
         while len(bits_str) % 4 != 0:
-            bits_str += '0'
+            bits_str += "0"
 
-        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False)
-        num_simbolos = len(bits_str) // 4
-        sinal_transmitido = np.zeros(num_simbolos * self.amostras_por_simbolo)
+        t = np.linspace(
+            0,
+            1,
+            self.amostras_por_simbolo,
+            endpoint=False,
+            dtype=np.float32
+        )
 
-        for j, i in enumerate(range(0, len(bits_str), 4)):
-            bits_i = bits_str[i:i + 2]
-            bits_q = bits_str[i + 2:i + 4]
+        cos = np.cos(2*np.pi*self.fc*t)
+        sen = -np.sin(2*np.pi*self.fc*t)
 
-            amp_i = self.niveis[bits_i] * amplitude_base
-            amp_q = self.niveis[bits_q] * amplitude_base
+        num_simbolos = len(bits_str)//4
 
-            onda = (amp_i * np.sin(2 * np.pi * self.fc * t)) + (amp_q * np.cos(2 * np.pi * self.fc * t))
-            
-            idx_inicio = j * self.amostras_por_simbolo
-            idx_fim = idx_inicio + self.amostras_por_simbolo
-            sinal_transmitido[idx_inicio:idx_fim] = onda
+        sinal = np.zeros(
+            num_simbolos*self.amostras_por_simbolo,
+            dtype=np.float32
+        )
 
-        return sinal_transmitido
+        for simbolo, i in enumerate(range(0, len(bits_str), 4)):
 
-    def desmodulation(self, amplitude_base: float, sinal_modulado: np.ndarray) -> str:
-        bits_recuperados = ""
-        t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False)
-        niveis_possiveis = np.array([-3, -1, 1, 3]) * amplitude_base
+            nibble = bits_str[i:i+4]
 
-        for i in range(0, len(sinal_modulado), self.amostras_por_simbolo):
-            bloco_sinal = sinal_modulado[i:i + self.amostras_por_simbolo]
+            I = amplitude*self.constelacao[nibble]["I"]
+            Q = amplitude*self.constelacao[nibble]["Q"]
 
-            valor_i = np.mean(bloco_sinal * np.sin(2 * np.pi * self.fc * t)) * 2
-            valor_q = np.mean(bloco_sinal * np.cos(2 * np.pi * self.fc * t)) * 2
+            onda = I*cos + Q*sen
 
-            nivel_i_estimado = niveis_possiveis[np.argmin(np.abs(niveis_possiveis - valor_i))]
-            nivel_q_estimado = niveis_possiveis[np.argmin(np.abs(niveis_possiveis - valor_q))]
+            inicio = simbolo*self.amostras_por_simbolo
+            fim = inicio+self.amostras_por_simbolo
 
-            chave_i = int(round(nivel_i_estimado / amplitude_base))
-            chave_q = int(round(nivel_q_estimado / amplitude_base))
+            sinal[inicio:fim] = onda
 
-            bits_recuperados += self.niveis_reverso[chave_i] + self.niveis_reverso[chave_q]
+        return sinal
 
-        return bits_recuperados
+    def demodulation(self, amplitude, bits_str):
 
+        t = np.linspace(
+            0,
+            1,
+            self.amostras_por_simbolo,
+            endpoint=False,
+            dtype=np.float32
+        )
+
+        cos = np.cos(2*np.pi*self.fc*t)
+        sen = -np.sin(2*np.pi*self.fc*t)
+
+        bits = ""
+
+        energia_cos = np.dot(cos, cos)
+        energia_sen = np.dot(sen, sen)
+
+        num_simbolos = len(bits_str)//self.amostras_por_simbolo
+
+        for simbolo in range(num_simbolos):
+
+            inicio = simbolo*self.amostras_por_simbolo
+            fim = inicio+self.amostras_por_simbolo
+
+            bloco = bits_str[inicio:fim]
+
+            # Recupera I e Q
+            I_rx = np.dot(bloco, cos)/energia_cos
+            Q_rx = np.dot(bloco, sen)/energia_sen
+
+            menor_distancia = np.inf
+            melhor_bits = ""
+
+            # Procura o ponto mais próximo da constelação
+            for chave, ponto in self.constelacao.items():
+
+                I = amplitude*ponto["I"]
+                Q = amplitude*ponto["Q"]
+
+                distancia = (I_rx-I)**2 + (Q_rx-Q)**2
+
+                if distancia < menor_distancia:
+                    menor_distancia = distancia
+                    melhor_bits = chave
+
+            bits += melhor_bits
+
+        return bits
 
 # Ruido Gaussiano
 
@@ -254,78 +349,8 @@ class Canal:
         ruido = np.random.normal(loc=x, scale=sigma, size=len(sinal))
         return sinal + ruido
 
-""""# Área de testes local lembrar de apagar depois."""
-"""if __name__ == '__main__':
-    # Configurações de teste
-    bits_originais = "10110010" # 8 bits é perfeito pois é divisível por 2 (QPSK) e 4 (16-QAM)
-    tensao = 1.0
-    sigma_ruido = 0.5 
-    canal = Canal()
-    
-    # Dicionario para armazenar resultados de todas as modulacoes
-    resultados = {}
+    """"# Área de testes local lembrar de apagar depois."""
+if __name__ == '__main__':
+    a = QPSK().modulation(1,'111010110000')
 
-    # 1. Baseband Modulations
-    baseband_mods = {'NRZ-Polar': NrzPolar(), 'Manchester': Manchester(), 'Bipolar': Bipolar()}
-    for nome, mod in baseband_mods.items():
-        sinal_tx = mod.modulation(tensao, bits_originais)
-        sinal_rx = canal.adicionar_ruido(sinal_tx, sigma=sigma_ruido)
-        bits_rx = mod.desmodulation(tensao, sinal_rx)
-        resultados[nome] = {'tx': sinal_tx, 'rx': sinal_rx, 'bits': bits_rx, 'is_base': True}
-
-    # 2. Carrier Modulations
-    carrier_mods = {'ASK': ASK(), 'FSK': FSK(), 'QPSK': QPSK(), '16-QAM': QAM16()}
-    for nome, mod in carrier_mods.items():
-        sinal_tx = mod.modulation(tensao, bits_originais)
-        sinal_rx = canal.adicionar_ruido(sinal_tx, sigma=sigma_ruido)
-        bits_rx = mod.desmodulation(tensao, sinal_rx)
-        resultados[nome] = {'tx': sinal_tx, 'rx': sinal_rx, 'bits': bits_rx, 'is_base': False}
-
-    # --- Plotagem de todos os testes ---
-    fig, axes = plt.subplots(7, 2, figsize=(16, 22))
-    fig.suptitle(f"Dashboard Camada Física | Bits Iniciais: {bits_originais} | Ruído \u03C3={sigma_ruido}", fontsize=18)
-
-    for idx, (nome, data) in enumerate(resultados.items()):
-        ax_tx = axes[idx, 0]
-        ax_rx = axes[idx, 1]
-        
-        sinal_tx, sinal_rx, bits_rx, is_base = data['tx'], data['rx'], data['bits'], data['is_base']
-        
-        cor_erro = 'green' if bits_rx == bits_originais else 'red'
-        
-        # Plot TX
-        ax_tx.set_title(f"{nome} TX")
-        if is_base:
-            ax_tx.step(np.arange(len(sinal_tx)), sinal_tx, where='post', color='blue', linewidth=2)
-            ax_tx.set_ylim(-tensao * 1.5, tensao * 1.5)
-        else:
-            x_val = np.linspace(0, len(bits_originais), len(sinal_tx), endpoint=False)
-            ax_tx.plot(x_val, sinal_tx, color='blue', linewidth=1.5)
-            # Para o 16-QAM, o sinal pode chegar a 3 * 1.41 * amplitude
-            y_lim = tensao * 4.5 if nome == '16-QAM' else tensao * 1.5
-            ax_tx.set_ylim(-y_lim, y_lim)
-        ax_tx.grid(True)
-
-        # Plot RX
-        ax_rx.set_title(f"{nome} RX | Recebido: {bits_rx}", color=cor_erro, fontweight='bold')
-        if is_base:
-            x_base = np.arange(len(sinal_rx))
-            ax_rx.plot(x_base, sinal_rx, color='red', alpha=0.6)
-            ax_rx.step(x_base, sinal_tx, where='post', color='black', linestyle='--', alpha=0.5)
-            ax_rx.set_ylim(-tensao * 2.5, tensao * 2.5)
-        else:
-            x_val = np.linspace(0, len(bits_originais), len(sinal_rx), endpoint=False)
-            ax_rx.plot(x_val, sinal_rx, color='red', alpha=0.6)
-            ax_rx.plot(x_val, sinal_tx, color='black', linestyle='--', alpha=0.4)
-            y_lim = tensao * 5.5 if nome == '16-QAM' else tensao * 2.5
-            ax_rx.set_ylim(-y_lim, y_lim)
-        ax_rx.grid(True)
-
-    plt.tight_layout(rect=[0, 0.03, 1, 0.97]) # Espaço para o Suptitle
-    plt.show()
-
-    print("\nResumo da Decodificação:")
-    print("-" * 30)
-    for nome, data in resultados.items():
-        status = "OK" if data['bits'] == bits_originais else "ERRO"
-        print(f"{nome.ljust(12)} -> {data['bits']} [{status}]")"""
+    print(QPSK().demodulation(a))
