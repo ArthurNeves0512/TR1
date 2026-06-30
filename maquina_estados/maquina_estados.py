@@ -25,41 +25,63 @@ class MaquinaEstados():
         self.msg = msg
 
     def sending(self) -> np.ndarray:
-        # Tamanho do quadro em BITS (se a config estiver em bytes, multiplique por 8)
-        frame_size = int(self.config.get('frame_size', 8)) * 8 
+        self.erro = None
+
+        # O tamanho configurado está em bytes.
+        frame_size = int(self.config.get('frame_size', 8)) * 8
         sinal_final = np.array([], dtype=np.float32)
-        
-        # Fragmentação: divide a mensagem em quadros menores
+
         for i in range(0, len(self.msg), frame_size):
             bloco_bits = self.msg[i:i + frame_size]
-            
-            # Cascata TX
-            msg_com_edc = self.execute_error_detection(bloco_bits, True)
-            msg_enquadrada = self.execute_framming(msg_com_edc, True)
-            sinal_modulado = self.execute_modulation(msg_enquadrada, True)
-            
-            # Concatena os sinais analógicos gerados
-            sinal_final = np.concatenate((sinal_final, sinal_modulado))
-            
+
+            # Primeiro enquadra.
+            msg_enquadrada = self.execute_framming(
+                bloco_bits,
+                True
+            )
+
+            # Depois adiciona Paridade, Checksum, CRC ou Hamming.
+            msg_com_edc = self.execute_error_detection(
+                msg_enquadrada,
+                True
+            )
+
+            # Por último modula.
+            sinal_modulado = self.execute_modulation(
+                msg_com_edc,
+                True
+            )
+
+            sinal_final = np.concatenate(
+                (sinal_final, sinal_modulado)
+            )
+
         return sinal_final
 
     def receving(self, array: np.ndarray) -> str:
-        # Inverso da modulação (Transforma todo o array de tensão em bits)
+        self.erro = None
+
+        # Transforma o sinal recebido novamente em bits.
         bits_totais = self.execute_modulation(array, False)
-        
-        # Neste ponto, precisamos desenquadrar. O ideal é que o próprio método 
-        # de desenquadramento saiba encontrar as FLAGS para separar os frames,
-        # mas como estamos processando sequencialmente:
-        
-        msg_desenq = self.execute_framming(bits_totais, False)
-        
-        # Se houve erro fatal no enquadramento e a string retornou vazia
-        if not msg_desenq:
-            return ""
-            
-        msg_sem_edc = self.execute_error_detection(msg_desenq, False)
-        
-        return BitConverter().bits_to_text(msg_sem_edc)
+
+        # Primeiro verifica o EDC ou corrige pelo Hamming.
+        msg_sem_edc = self.execute_error_detection(bits_totais, False)
+
+        if msg_sem_edc is None:
+            return f"ERRO: {self.erro}"
+
+        # Somente depois desenquadra.
+        msg_desenq = self.execute_framming(msg_sem_edc, False)
+
+        if msg_desenq is None:
+            return f"ERRO: {self.erro}"
+
+        try:
+            return BitConverter().bits_to_text(msg_desenq)
+
+        except (ValueError, UnicodeDecodeError):
+            self.erro = "Não foi possível converter os bits recebidos para texto."
+            return f"ERRO: {self.erro}"
 
     def execute_framming(self, bits_str, isSending: bool) -> str:
         metodo_framming = self.config['framming_type']
@@ -83,8 +105,9 @@ class MaquinaEstados():
             return bits_str
 
         if erro:
+            self.erro = erro
             print(f"[Enlace RX] Erro de enquadramento: {erro}")
-            return "" 
+            return None
 
         return dados
 
