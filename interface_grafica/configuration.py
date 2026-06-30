@@ -7,9 +7,11 @@ class ConfigurationBox:
         self.config = {
             "modulation": "",
             "framming_type":"Contagem de Caracteres",
-            "voltage_level":10,
+            "voltage_level":5,
             'detection_type':'',
-            'frame_size':8
+            'frame_size':8,
+            'media_ruido': 0.0,
+            'sigma_ruido': 0.0
         }
         self.on_start_callback = None
 
@@ -17,6 +19,8 @@ class ConfigurationBox:
         self.start_simulation_button =self.startSimulationButton()
         self.voltageLevelInputText = self.setupVoltageLevelInputField()
         self.frameSizeInputText = self.setupFrameSizeInputField()
+        self.noiseInputText = self.setupNoiseInputField()
+        self.meanNoiseInputText = self.setupMeanNoiseInputField()
         self.detecting_correting_comboBox= self.setup_detecting_or_correcting_error_comboBox()
         self.framming_type_comboBox = self.setup_framming_type_comboBox()
 
@@ -55,8 +59,8 @@ class ConfigurationBox:
         print(self.config["modulation"])
     
     def set_detecting_or_correcting_error(self,widget):
-        self.config["detect_correct"] = widget.get_active_text()
-        print(self.config['detect_correct'])
+        self.config["detection_type"] = widget.get_active_text()        
+        print(self.config['detection_type'])
 
     def setup_framming_type_comboBox(self)->Gtk.ComboBoxText:
         digital_modulation_comboBox = Gtk.ComboBoxText()
@@ -77,30 +81,44 @@ class ConfigurationBox:
         startButton.connect("clicked",self.start_button_callback_trigger)
         return startButton
 
-    def start_button_callback_trigger(self,button):
+    def start_button_callback_trigger(self, button):
         if self.on_start_callback:
-            if(self.voltageLevelInputText.get_text()!='Nivel de Tensão'):
-                self.config['voltage_level']=int(self.voltageLevelInputText.get_text())
-            if(self.frameSizeInputText.get_text()!='Tamanho do quadro'):
-                self.config['frame_size']=int(self.frameSizeInputText.get_text())
+            # Captura os valores digitados nas caixas de texto
+            self.config['voltage_level'] = int(self.voltageLevelInputText.get_text())
+            self.config['frame_size'] = int(self.frameSizeInputText.get_text())
+            self.config['sigma_ruido'] = float(self.noiseInputText.get_text())
+            self.config['media_ruido'] = float(self.meanNoiseInputText.get_text())
+
             self.on_start_callback(self.config.copy())
             
     def setupVoltageLevelInputField(self) -> Gtk.Entry:
         textEntry = Gtk.Entry()
-        textEntry.set_text("Nivel de Tensão")
+        textEntry.set_text("5")
         return textEntry
 
 
     def setupFrameSizeInputField(self)->Gtk.Entry:
         textEntry = Gtk.Entry()
-        textEntry.set_text("Tamanho do quadro")
+        textEntry.set_text("8")
         return textEntry
     
+    def setupNoiseInputField(self) -> Gtk.Entry:
+        textEntry = Gtk.Entry()
+        textEntry.set_text("0.0")  # Valor padrão inicializado para ruido sigma
+        return textEntry
+
+    def setupMeanNoiseInputField(self) -> Gtk.Entry:
+        textEntry = Gtk.Entry()
+        textEntry.set_text("0.0")  # Valor padrão inicializado para ruido media
+        return textEntry
+
     def setupConfiguration(self)->Gtk.Box:
         box = Gtk.Box(spacing=6)
         box.pack_start(self.modulation_comboBox,True,True,0)
         box.pack_start(self.voltageLevelInputText,True,True,0)
         box.pack_start(self.frameSizeInputText,True,True,0)
+        box.pack_start(self.noiseInputText,True,True,0)
+        box.pack_start(self.meanNoiseInputText,True,True,0)
         box.pack_start(self.detecting_correting_comboBox,True,True,0)
         box.pack_start(self.framming_type_comboBox,True,True,0)
         box.pack_start(self.start_simulation_button,True,True,0)

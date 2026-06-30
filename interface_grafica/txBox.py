@@ -20,11 +20,19 @@ class TxBox:
         return textEntry
 
     def setupTx(self) -> Gtk.Box:
+        frame = Gtk.Frame(label="Transmissor")
+
         box = Gtk.Box(spacing=6)
+        box.set_margin_start(10)
+        box.set_margin_end(10)
+        box.set_margin_top(10)
+        box.set_margin_bottom(10)
+
 
         box.pack_start(self.inputText, True, True, 0)
+        frame.add(box)
 
-        return box
+        return frame
 
     def on_send_clicked(self, button):
 
