@@ -9,7 +9,7 @@ class ConfigurationBox:
             "framming_type":"Contagem de Caracteres",
             "voltage_level":10,
             'detection_type':'',
-            'frame_size':8
+            'frame_size':1
         }
         self.on_start_callback = None
 

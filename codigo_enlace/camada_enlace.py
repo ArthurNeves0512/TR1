@@ -2,7 +2,7 @@ class CamadaEnlace:
     
     def __init__(self,config=None):
         self.config = config
-        self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM = 4
+        self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM = 1
 
     # Enquadramento
 
@@ -10,7 +10,9 @@ class CamadaEnlace:
 
     def enquadramento_contagem_caracteres(self, dados_bits: str) -> str:
         # pega o tamanho em bytes da string de bits, então um 0000 11111 vai dar tamanho_dados = 1
+        self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM = self.config['frame_size']
         tamanho_dados = int(len(dados_bits)/8)
+        
         #aqui é multiplicando por 8 para transformar em bits, apenas isso.
         cabecalho = format(tamanho_dados, f'0{self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8}b')
         quadro = cabecalho + dados_bits
