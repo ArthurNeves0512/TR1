@@ -73,7 +73,7 @@ class ASK:
     def modulation(self, amplitude: float, bits_str: str) -> np.ndarray:
         t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False,dtype=np.float32)
         onda_portadora = amplitude * np.sin(2 * np.pi * self.fc *t)
-        onda_morta = np.zeros(self.amostras_por_bit)
+        onda_morta = np.zeros(self.amostras_por_bit,dtype=np.float32)
 
         sinal_transmitido = np.zeros(len(bits_str) * self.amostras_por_bit,dtype=np.float32)
         

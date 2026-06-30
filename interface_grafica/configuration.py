@@ -9,6 +9,8 @@ class ConfigurationBox:
             "framming_type":"Contagem de Caracteres",
             "voltage_level":10,
             'detection_type':'',
+            'media_erro':0.0,
+            'sigma_erro':0.0,
             'frame_size':1
         }
         self.on_start_callback = None
@@ -17,6 +19,8 @@ class ConfigurationBox:
         self.start_simulation_button =self.startSimulationButton()
         self.voltageLevelInputText = self.setupVoltageLevelInputField()
         self.frameSizeInputText = self.setupFrameSizeInputField()
+        self.mediaErrorInputText = self.setupMediaErrorInput()
+        self.sigmaErrorInputText = self.setupSigmaErrorInput()
         self.detecting_correting_comboBox= self.setup_detecting_or_correcting_error_comboBox()
         self.framming_type_comboBox = self.setup_framming_type_comboBox()
 
@@ -83,13 +87,26 @@ class ConfigurationBox:
                 self.config['voltage_level']=int(self.voltageLevelInputText.get_text())
             if(self.frameSizeInputText.get_text()!='Tamanho do quadro'):
                 self.config['frame_size']=int(self.frameSizeInputText.get_text())
+            if(self.mediaErrorInputText.get_text()!='Nivel de media pro erro'):
+                self.config['media_erro']=float(self.mediaErrorInputText.get_text())
+            if(self.sigmaErrorInputText.get_text()!='Tamanho do quadro'):
+                self.config['sigma_erro']=float(self.sigmaErrorInputText.get_text())
             self.on_start_callback(self.config.copy())
             
     def setupVoltageLevelInputField(self) -> Gtk.Entry:
         textEntry = Gtk.Entry()
         textEntry.set_text("Nivel de Tensão")
         return textEntry
-
+    
+    def setupMediaErrorInput(self) -> Gtk.Entry:
+        textEntry = Gtk.Entry()
+        textEntry.set_text("Nivel de media pro erro")
+        return textEntry
+    
+    def setupSigmaErrorInput(self) -> Gtk.Entry:
+        textEntry = Gtk.Entry()
+        textEntry.set_text("Nivel de sigma pro erro")
+        return textEntry
 
     def setupFrameSizeInputField(self)->Gtk.Entry:
         textEntry = Gtk.Entry()
@@ -101,6 +118,8 @@ class ConfigurationBox:
         box.pack_start(self.modulation_comboBox,True,True,0)
         box.pack_start(self.voltageLevelInputText,True,True,0)
         box.pack_start(self.frameSizeInputText,True,True,0)
+        box.pack_start(self.mediaErrorInputText,True,True,0)
+        box.pack_start(self.sigmaErrorInputText,True,True,0)
         box.pack_start(self.detecting_correting_comboBox,True,True,0)
         box.pack_start(self.framming_type_comboBox,True,True,0)
         box.pack_start(self.start_simulation_button,True,True,0)

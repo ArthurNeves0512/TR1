@@ -101,18 +101,20 @@ class BitConverter:
     def text_to_bits(self,text: str) -> str:
         return ''.join(format(byte, '08b') for byte in text.encode('utf-8'))
 
-    def bits_to_text(self,bits: str) -> str:
+    
+    def bits_to_text(self, bits: str) -> str:
+        bits = bits[:len(bits) - (len(bits) % 8)]
+
         data = bytearray()
 
         for i in range(0, len(bits), 8):
             byte = bits[i:i+8]
+            try:
+                data.append(int(byte, 2))
+            except ValueError:
+                continue
 
-            if len(byte) < 8:
-                break
-
-            data.append(int(byte, 2))
-
-        return data.decode('utf-8')
+        return data.decode('utf-8', errors='replace')
 
 
 class MaquinaEstados():
@@ -122,9 +124,12 @@ class MaquinaEstados():
         
 
     def sending(self):
+        media_erro = self.config['media_erro']
+        sigma_erro = self.config['sigma_erro']
         msg_enquadrada = self.execute_framming(self.msg,True)
         msg_modulation= self.execute_modulation(msg_enquadrada,True)
         plt.show()
+        msg_modulation = camada_enlace.Canal(media_erro,sigma_erro).transmitir(msg_modulation)
         return msg_modulation
     
     def receving(self,array:np.array):
