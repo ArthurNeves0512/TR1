@@ -126,7 +126,8 @@ class MaquinaEstados():
     def sending(self):
         media_erro = self.config['media_erro']
         sigma_erro = self.config['sigma_erro']
-        msg_enquadrada = self.execute_framming(self.msg,True)
+        bits = self.execute_detect(self.msg,True)
+        msg_enquadrada = self.execute_framming(bits,True)
         msg_modulation= self.execute_modulation(msg_enquadrada,True)
         plt.show()
         msg_modulation = camada_enlace.Canal(media_erro,sigma_erro).transmitir(msg_modulation)
@@ -135,7 +136,8 @@ class MaquinaEstados():
     def receving(self,array:np.array):
         msg_desmodularizada = self.execute_modulation(array,False)
         msg_desenquadrada = self.execute_framming(msg_desmodularizada,False)
-        return BitConverter().bits_to_text(msg_desenquadrada)
+        bits = self.execute_detect(msg_desenquadrada, False)
+        return BitConverter().bits_to_text(bits)
 
 
     def execute_framming(self,bits_str,isSending:bool)->str:
@@ -225,5 +227,16 @@ class MaquinaEstados():
             return camada_fisica.QAM16().demodulation(self.config['voltage_level'],bits_str=bits_str)
     
     def execute_detect(self,bits,isSending):
-        pass
+        metodo = self.config["detection_type"]
+        if isSending:
+            if metodo == "Hamming":
+                print("fui de hamming")
+                # return camada_enlace.enquadramento_hamming(bits)
+            return camada_enlace.CamadaEnlace().setup_inserir_redundancia(bits, metodo)
+        else:
+            if metodo == "Hamming":
+                print("fui de hamming")
+                # return camada_enlace.desenquadramento_hamming(bits)
+            return camada_enlace.CamadaEnlace().setup_conferir_redundencia(bits, metodo)
+        
         

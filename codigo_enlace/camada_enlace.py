@@ -37,17 +37,15 @@ class CamadaEnlace:
         
         #aqui é multiplicando por 8 para transformar em bits, apenas isso.
         cabecalho = format(tamanho_dados, f'0{self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8}b')
-        dados_bits = self.setup_inserir_redundencia(dados_bits,self.config['detection_type'])
+        dados_bits = self.setup_inserir_redundancia(dados_bits,self.config['detection_type'])
         quadro = cabecalho + dados_bits
         return quadro
 
     def desenquadramento_contagem_caracteres(self, quadro: str) -> str:
         cabecalho = quadro[:self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8]
-        #indica que a string(vulgos os bits) então em base 2.
-        tamanho_dados = int(cabecalho, 2)
-        inicio_dados = self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8
-        dados_originais = quadro[inicio_dados: inicio_dados + tamanho_dados*8]
-        return dados_originais
+        inicio = self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM*8
+
+        return quadro[inicio:]
 
     # ENQUADRAMENTO COM FLAGS e inserção de bytes ou caracteres
     
@@ -71,7 +69,7 @@ class CamadaEnlace:
         return quadro
 
 
-    def setup_inserir_redundencia(self,bits_str,tipo_detector):
+    def setup_inserir_redundancia(self,bits_str,tipo_detector):
         if(tipo_detector=='Paridade Par'):
             return self.enquadramento_paridade_par(dados_bits=bits_str)
         if(tipo_detector=='CheckSum'):
