@@ -1,290 +1,421 @@
 class CamadaEnlace:
-
-    # ENQUADRAMENTO 
-
+    
     def __init__(self, config=None):
         self.config = config
-        self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM = 1
+        self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM = 4
 
+    def _validar_bits(self, bits: str) -> bool:
+        return isinstance(bits, str) and bits != "" and all(bit in "01" for bit in bits)
+
+    # Enquadramento
 
     def enquadramento_contagem_caracteres(self, dados_bits: str) -> str:
-        # Cada 8 bits = 1 byte de carga útil
-        bytes_dados = len(dados_bits) // 8
-        # O cabeçalho conta a si mesmo, então soma 1
-        valor_cabecalho = bytes_dados + 1
-        cabecalho = format(valor_cabecalho, '08b')
-        return cabecalho + dados_bits
+        if not self._validar_bits(dados_bits):
+            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+
+        if len(dados_bits) % 8 != 0:
+            raise ValueError("A contagem de caracteres exige uma quantidade inteira de bytes.")
+
+        # Pega o tamanho da carga útil em bytes.
+        tamanho_dados = len(dados_bits) // 8
+
+        # O cabeçalho possui 4 bytes, ou seja, 32 bits.
+        cabecalho = format(
+            tamanho_dados,
+            f'0{self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM * 8}b'
+        )
+
+        quadro = cabecalho + dados_bits
+        return quadro
 
     def desenquadramento_contagem_caracteres(self, quadro: str) -> tuple:
-        # Valida tamanho mínimo
-        if len(quadro) < 8:
-            return (None, "Erro no quadro: cabeçalho incompleto.")
+        if not self._validar_bits(quadro):
+            return None, "Erro de Transmissão"
 
-        # Valida que só há '0' e '1'
-        if not all(b in '01' for b in quadro):
-            return (None, "Erro no quadro: entrada contém caracteres inválidos.")
+        tamanho_cabecalho = self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM * 8
 
-        cabecalho_bits = quadro[:8]
-        valor_cabecalho = int(cabecalho_bits, 2)
+        if len(quadro) < tamanho_cabecalho:
+            return None, "Erro de Transmissão"
 
-        # Valor 0 ou 1 é inválido (mínimo é 1 byte de cabeçalho + algum dado = 2)
-        if valor_cabecalho < 1:
-            return (None, "Erro no quadro: valor de cabeçalho inválido.")
+        cabecalho = quadro[:tamanho_cabecalho]
+        tamanho_dados = int(cabecalho, 2)
+        inicio_dados = tamanho_cabecalho
+        fim_dados = inicio_dados + tamanho_dados * 8
 
-        # Subtrai 1 para obter a quantidade de bytes de carga útil
-        bytes_dados = valor_cabecalho - 1
-        bits_dados = bytes_dados * 8
+        if len(quadro) < fim_dados:
+            return None, "Erro de Transmissão"
 
-        dados = quadro[8: 8 + bits_dados]
+        if len(quadro) > fim_dados:
+            return None, "Erro de Transmissão"
 
-        # Verifica se a carga útil tem o tamanho prometido pelo cabeçalho
-        if len(dados) < bits_dados:
-            return (None, "Erro no quadro: carga útil menor que o informado no cabeçalho.")
+        dados_originais = quadro[inicio_dados:fim_dados]
+        return dados_originais, None
 
-        return (dados, None)
-
-    # Inserção de bytes
-
+    # ENQUADRAMENTO COM FLAGS e inserção de bytes ou caracteres
+    
     FLAG_BYTE = '01111110'
-    ESC_BYTE  = '01111101'
+    ESC_BYTE = '01111101'
 
     def enquadramento_insercao_bytes(self, dados_bits: str) -> str:
-        quadro = self.FLAG_BYTE
+        if not self._validar_bits(dados_bits):
+            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+
+        if len(dados_bits) % 8 != 0:
+            raise ValueError("A inserção de bytes exige uma quantidade inteira de bytes.")
+
+        quadro = ""
+        quadro += self.FLAG_BYTE
 
         for i in range(0, len(dados_bits), 8):
             byte_atual = dados_bits[i:i+8]
-            # Protege FLAG e ESC com um ESC antes
+
             if byte_atual == self.FLAG_BYTE or byte_atual == self.ESC_BYTE:
-                quadro += self.ESC_BYTE
-            quadro += byte_atual
+                quadro += self.ESC_BYTE  # Insere o ESC antes.
+            
+            quadro += byte_atual  # Adiciona o byte original.
 
         quadro += self.FLAG_BYTE
         return quadro
 
     def desenquadramento_insercao_bytes(self, quadro: str) -> tuple:
-        # Valida tamanho mínimo (FLAG + FLAG = 16 bits)
+        if not self._validar_bits(quadro):
+            return None, "Erro de Transmissão"
+
         if len(quadro) < 16:
-            return (None, "Erro no quadro: quadro muito curto.")
+            return None, "Erro de Transmissão"
 
-        # Valida FLAGS externas
-        if quadro[:8] != self.FLAG_BYTE:
-            return (None, "Erro no quadro: FLAG inicial ausente ou alterada.")
-        if quadro[-8:] != self.FLAG_BYTE:
-            return (None, "Erro no quadro: FLAG final ausente ou alterada.")
+        if len(quadro) % 8 != 0:
+            return None, "Erro de Transmissão"
 
-        miolo = quadro[8:-8]
+        if not quadro.startswith(self.FLAG_BYTE) or not quadro.endswith(self.FLAG_BYTE):
+            return None, "Erro de Transmissão"
 
-        # Valida que o miolo é múltiplo de 8 bits
-        if len(miolo) % 8 != 0:
-            return (None, "Erro no quadro: byte incompleto no conteúdo.")
+        miolo_do_quadro = quadro[8:-8]
+        mensagem_limpa = ""
+        ignorar_proximo_esc = False
 
-        mensagem = ""
-        i = 0
-        while i < len(miolo):
-            byte_atual = miolo[i:i+8]
+        for i in range(0, len(miolo_do_quadro), 8):
+            byte_atual = miolo_do_quadro[i:i+8]
+            
+            if ignorar_proximo_esc:
+                if byte_atual != self.FLAG_BYTE and byte_atual != self.ESC_BYTE:
+                    return None, "Erro de Transmissão"
 
-            if byte_atual == self.ESC_BYTE:
-                # Deve existir um byte seguinte
-                if i + 8 >= len(miolo):
-                    return (None, "Erro no quadro: ESC sem byte seguinte.")
-                byte_seguinte = miolo[i+8:i+16]
-                # O byte seguinte ao ESC só pode ser FLAG ou ESC
-                if byte_seguinte != self.FLAG_BYTE and byte_seguinte != self.ESC_BYTE:
-                    return (None, "Erro no quadro: ESC seguido de byte inválido.")
-                mensagem += byte_seguinte
-                i += 16
+                mensagem_limpa += byte_atual
+                ignorar_proximo_esc = False
+                
+            elif byte_atual == self.ESC_BYTE:
+                ignorar_proximo_esc = True
+                
+            elif byte_atual == self.FLAG_BYTE:
+                return None, "Erro de Transmissão"
+
             else:
-                mensagem += byte_atual
-                i += 8
+                mensagem_limpa += byte_atual
 
-        return (mensagem, None)
+        if ignorar_proximo_esc:
+            return None, "Erro de Transmissão"
 
-    # Inserção de bits
-
-    FLAG_BITS = '01111110'
+        return mensagem_limpa, None
+    
+    # ENQUADRAMENTO com FLAGS Inserção de bits
 
     def enquadramento_insercao_bits(self, dados_bits: str) -> str:
-        quadro = self.FLAG_BITS
-        contador_uns = 0
+        if not self._validar_bits(dados_bits):
+            raise ValueError("Os dados devem conter somente bits 0 e 1.")
 
+        FLAG_BITS = "01111110"
+        quadro_final = ""
+        contador_uns = 0
+        quadro_final += FLAG_BITS
+        
         for bit in dados_bits:
-            quadro += bit
+            quadro_final += bit
+
             if bit == '1':
                 contador_uns += 1
             else:
-                contador_uns = 0
-            # Após 5 uns consecutivos, insere um zero de stuffing
+                contador_uns = 0 
+                
             if contador_uns == 5:
-                quadro += '0'
+                quadro_final += '0'
                 contador_uns = 0
 
-        quadro += self.FLAG_BITS
-        return quadro
-
+        quadro_final += FLAG_BITS
+        return quadro_final
+    
     def desenquadramento_insercao_bits(self, quadro: str) -> tuple:
-        # Valida FLAGS externas
-        if len(quadro) < 16:
-            return (None, "Erro no quadro: quadro muito curto.")
-        if quadro[:8] != self.FLAG_BITS:
-            return (None, "Erro no quadro: FLAG inicial ausente ou alterada.")
-        if quadro[-8:] != self.FLAG_BITS:
-            return (None, "Erro no quadro: FLAG final ausente ou alterada.")
+        if not self._validar_bits(quadro):
+            return None, "Erro de Transmissão"
 
-        miolo = quadro[8:-8]
-        mensagem = ""
+        FLAG_BITS = "01111110"
+
+        if len(quadro) < 16:
+            return None, "Erro de Transmissão"
+
+        if not quadro.startswith(FLAG_BITS) or not quadro.endswith(FLAG_BITS):
+            return None, "Erro de Transmissão"
+
+        miolo_do_quadro = quadro[8:-8]
+        mensagem_limpa = ""
         contador_uns = 0
         i = 0
+        
+        while i < len(miolo_do_quadro):
+            bit = miolo_do_quadro[i]
 
-        while i < len(miolo):
-            bit = miolo[i]
             if bit == '1':
-                mensagem += bit
+                mensagem_limpa += bit
                 contador_uns += 1
-                # Após 5 uns, o próximo deve ser o zero
+
                 if contador_uns == 5:
+                    if i + 1 >= len(miolo_do_quadro):
+                        return None, "Erro de Transmissão"
+
+                    if miolo_do_quadro[i + 1] != '0':
+                        return None, "Erro de Transmissão"
+
+                    # Pula o zero inserido pelo transmissor.
                     i += 1
-                    if i >= len(miolo):
-                        return (None, "Erro no quadro: zero de stuffing ausente após cinco bits 1.")
-                    proximo = miolo[i]
-                    if proximo != '0':
-                        return (None, "Erro no quadro: esperado zero de stuffing, encontrado 1.")
-                    # Descarta o zero inserido e reinicia contagem
                     contador_uns = 0
             else:
-                mensagem += bit
+                mensagem_limpa += bit
                 contador_uns = 0
+
             i += 1
 
-        return (mensagem, None)
+        return mensagem_limpa, None
+    
+    # Detecção de erros
 
-    # Paridade par
+    # PARIDADE PAR
 
     def enquadramento_paridade_par(self, dados_bits: str) -> str:
+        if not self._validar_bits(dados_bits):
+            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+
         contador_uns = dados_bits.count('1')
-        # Garante que o total de números 1 no quadro seja par
-        bit_paridade = '1' if contador_uns % 2 != 0 else '0'
-        return dados_bits + bit_paridade
+        
+        if contador_uns % 2 == 0:
+            bit_paridade = '0'
+        else:
+            bit_paridade = '1'
+
+        quadro_final = dados_bits + bit_paridade
+        return quadro_final
 
     def desenquadramento_paridade_par(self, quadro: str) -> tuple:
-        contador_uns = quadro.count('1')
-        if contador_uns % 2 != 0:
-            return (None, "Erro no quadro: erro de paridade par detectado.")
-        # Remove o bit de paridade e retorna a carga útil
-        return (quadro[:-1], None)
+        if not self._validar_bits(quadro):
+            return None, "Erro de Transmissão"
 
-    # Checksum 
+        if len(quadro) < 2:
+            return None, "Erro de Transmissão"
+
+        contador_uns = quadro.count('1')
+        
+        if contador_uns % 2 != 0:
+            return None, "Erro de Transmissão"
+
+        dados_originais = quadro[:-1]
+        return dados_originais, None
+
+    # CHECKSUM
 
     def _soma_blocos_8bits(self, dados_bits: str) -> int:
-        # Garante múltiplo de 8 preenchendo à esquerda com zeros
         resto = len(dados_bits) % 8
+
         if resto != 0:
             dados_bits = dados_bits.zfill(len(dados_bits) + (8 - resto))
 
         soma = 0
+
         for i in range(0, len(dados_bits), 8):
             bloco = dados_bits[i:i+8]
             soma += int(bloco, 2)
-            # Retorna o carry para o bit menos significativo
-            while soma > 255:
-                soma = (soma & 0xFF) + (soma >> 8)
 
+            # Soma o carry novamente ao resultado de 8 bits.
+            while soma > 255:
+                soma = (soma & 255) + (soma >> 8)
+                
         return soma
 
     def enquadramento_checksum(self, dados_bits: str) -> str:
+        if not self._validar_bits(dados_bits):
+            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+
         soma = self._soma_blocos_8bits(dados_bits)
-        checksum_int = soma ^ 0xFF          # Complemento de um
+        checksum_int = soma ^ 255
         checksum_bits = format(checksum_int, '08b')
+
         return dados_bits + checksum_bits
 
     def desenquadramento_checksum(self, quadro: str) -> tuple:
+        if not self._validar_bits(quadro):
+            return None, "Erro de Transmissão"
+
+        if len(quadro) < 9:
+            return None, "Erro de Transmissão"
+
         soma_total = self._soma_blocos_8bits(quadro)
+        
         if soma_total != 255:
-            return (None, "Erro no quadro: erro de checksum detectado.")
-        return (quadro[:-8], None)
+            return None, "Erro de Transmissão"
+
+        dados_originais = quadro[:-8]
+        return dados_originais, None
 
     # CRC-32
-
+    
     POLINOMIO_CRC32 = "100000100110000010001110110110111"
+
+    def _divisao_crc(self, bits_dividendo: str, polinomio: str) -> str:
+        dados_lista = list(bits_dividendo)
+
+        # Executa a divisão polinomial usando somente XOR.
+        for i in range(len(dados_lista) - len(polinomio) + 1):
+            if dados_lista[i] == '1':
+                for j in range(len(polinomio)):
+                    bit_a = int(dados_lista[i + j])
+                    bit_b = int(polinomio[j])
+                    dados_lista[i + j] = str(bit_a ^ bit_b)
+
+        grau = len(polinomio) - 1
+        return ''.join(dados_lista[-grau:])
 
     def _calcula_crc(self, dados_bits: str, polinomio: str) -> str:
         grau = len(polinomio) - 1
-        # Acrescenta zeros equivalentes ao grau do polinômio
-        dados_lista = list(dados_bits + '0' * grau)
-
-        for i in range(len(dados_bits)):
-            if dados_lista[i] == '1':
-                for j in range(len(polinomio)):
-                    dados_lista[i+j] = str(int(dados_lista[i+j]) ^ int(polinomio[j]))
-
-        resto = ''.join(dados_lista[-grau:])
-        return resto
+        dados_padded = dados_bits + ('0' * grau)
+        return self._divisao_crc(dados_padded, polinomio)
 
     def enquadramento_crc(self, dados_bits: str) -> str:
+        if not self._validar_bits(dados_bits):
+            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+
         crc = self._calcula_crc(dados_bits, self.POLINOMIO_CRC32)
         return dados_bits + crc
 
     def desenquadramento_crc(self, quadro: str) -> tuple:
-        # Divide o quadro completo (dados + CRC) pelo polinômio; resto deve ser zero
-        resto = self._calcula_crc(quadro, self.POLINOMIO_CRC32)
-        if '1' in resto:
-            return (None, "Erro no quadro: erro de CRC-32 detectado.")
-        return (quadro[:-32], None)
+        if not self._validar_bits(quadro):
+            return None, "Erro de Transmissão"
 
-    # Hamming
+        grau = len(self.POLINOMIO_CRC32) - 1
+
+        if len(quadro) <= grau:
+            return None, "Erro de Transmissão"
+
+        # Na recepção, o quadro completo é dividido diretamente pelo polinômio.
+        resto = self._divisao_crc(quadro, self.POLINOMIO_CRC32)
+
+        if '1' in resto:
+            return None, "Erro de Transmissão"
+            
+        dados_originais = quadro[:-grau]
+        return dados_originais, None
+    
+    # Correção de erros
+
+    # HAMMING SIMPLES
+    # O Hamming simples corrige um único bit errado.
 
     def enquadramento_hamming(self, dados_bits: str) -> str:
+        if not self._validar_bits(dados_bits):
+            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+
         m = len(dados_bits)
-        # Calcula o número mínimo de bits de paridade necessários
         r = 0
-        while (2 ** r) < (m + r + 1):
+        
+        while (2**r) < (m + r + 1):
             r += 1
 
-        # Monta o quadro reservando posições de potências de 2 para paridade
         quadro = ['0'] * (m + r)
         j = 0
+
         for i in range(1, m + r + 1):
-            if (i & (i - 1)) != 0:          # Não é potência de 2 → bit de dados
-                quadro[i-1] = dados_bits[j]
+            if (i & (i - 1)) != 0:
+                quadro[i - 1] = dados_bits[j]
                 j += 1
 
-        # Calcula cada bit de paridade (paridade par)
         for i in range(r):
-            pos = 2 ** i
+            pos = 2**i
             paridade = 0
-            for k in range(1, m + r + 1):
-                if k & pos:
-                    paridade ^= int(quadro[k-1])
-            quadro[pos-1] = str(paridade)
+
+            for j in range(1, m + r + 1):
+                if j & pos:
+                    paridade ^= int(quadro[j - 1])
+                    
+            quadro[pos - 1] = str(paridade)
 
         return ''.join(quadro)
 
     def desenquadramento_hamming(self, quadro: str) -> tuple:
+        if not self._validar_bits(quadro):
+            return None, "Erro de Transmissão"
+
+        if len(quadro) < 3:
+            return None, "Erro de Transmissão"
+
         n = len(quadro)
         quadro_lista = list(quadro)
-
-        # Calcula a síndrome recalculando todas as paridades
         sindrome = 0
+
         for i in range(1, n + 1):
-            if quadro_lista[i-1] == '1':
+            if quadro_lista[i - 1] == '1':
                 sindrome ^= i
 
-        mensagem_correcao = None
+        aviso = None
 
         if sindrome != 0:
-            # Valida que a síndrome aponta para uma posição existente
+            # Em um Hamming simples, uma síndrome válida representa
+            # a posição do único bit que deve ser corrigido.
             if sindrome > n:
-                return (None, "Erro no quadro: síndrome Hamming inválida.")
-            # Corrige o bit errado
-            quadro_lista[sindrome-1] = '0' if quadro_lista[sindrome-1] == '1' else '1'
-            mensagem_correcao = f"Hamming detectou e corrigiu o bit da posição {sindrome}."
+                return None, "Erro de Hamming: a posição calculada está fora do quadro."
 
-        # Remove os bits de paridade e recupera apenas os dados
+            if quadro_lista[sindrome - 1] == '1':
+                quadro_lista[sindrome - 1] = '0'
+            else:
+                quadro_lista[sindrome - 1] = '1'
+
+            # Confere se a correção deixou o quadro com síndrome zero.
+            sindrome_apos_correcao = 0
+
+            for i in range(1, n + 1):
+                if quadro_lista[i - 1] == '1':
+                    sindrome_apos_correcao ^= i
+
+            if sindrome_apos_correcao != 0:
+                return None, "Erro de Hamming: o quadro não pôde ser corrigido."
+
+            aviso = f"Hamming corrigiu um erro no bit da posição {sindrome}."
+
         dados_originais = ""
+
         for i in range(1, n + 1):
-            if (i & (i - 1)) != 0:          # Não é potência de 2 → bit de dados
-                dados_originais += quadro_lista[i-1]
+            if (i & (i - 1)) != 0:
+                dados_originais += quadro_lista[i - 1]
 
-        return (dados_originais, mensagem_correcao)
+        return dados_originais, aviso
 
 
+if __name__ == "__main__":
+    enlace = CamadaEnlace()
+    mensagem = "1011100011111000"
 
+    quadro = enlace.enquadramento_crc(mensagem)
+    recuperada, erro = enlace.desenquadramento_crc(quadro)
+
+    # Simula um erro invertendo um bit do quadro.
+    quadro_com_erro = list(quadro)
+    quadro_com_erro[5] = '1' if quadro_com_erro[5] == '0' else '0'
+    quadro_com_erro = ''.join(quadro_com_erro)
+
+    recuperada_com_erro, erro_detectado = enlace.desenquadramento_crc(
+        quadro_com_erro
+    )
+
+    print("Mensagem:          ", mensagem)
+    print("Quadro CRC:         ", quadro)
+    print("Recuperada:         ", recuperada)
+    print("Erro normal:        ", erro)
+    print("Quadro com erro:    ", quadro_com_erro)
+    print("Dados com erro:     ", recuperada_com_erro)
+    print("Erro detectado:     ", erro_detectado)
