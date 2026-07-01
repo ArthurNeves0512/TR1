@@ -180,10 +180,7 @@ class MaquinaEstados:
             self.execute_digital_modulation(self.msg_enquadrada, True),
             dtype=np.float32,
         )
-
-        # Segunda etapa opcional: modulação por portadora.
-        # As classes ASK/FSK/QPSK/16-QAM recebem os bits enquadrados. Elas não
-        # recebem diretamente o vetor de tensões NRZ/Manchester/Bipolar.
+        
         portadora = self.config.get(
             "carrier_modulation",
             "Nenhuma (Usar Digital)",
@@ -208,12 +205,13 @@ class MaquinaEstados:
 
         # O ruído é aplicado somente ao sinal que realmente atravessa o meio.
         if sigma_erro != 0 or media_erro != 0:
-            ruido = np.random.normal(
-                media_erro,
-                sigma_erro,
-                len(self.msg_modulation),
+
+            meio_de_comunicacao = camada_fisica.Canal()
+            msg_final = meio_de_comunicacao.adicionar_ruido(
+                sinal=self.msg_modulation,
+                x=media_erro,
+                sigma=sigma_erro
             ).astype(np.float32)
-            msg_final = (self.msg_modulation + ruido).astype(np.float32)
         else:
             msg_final = self.msg_modulation.astype(np.float32)
 
