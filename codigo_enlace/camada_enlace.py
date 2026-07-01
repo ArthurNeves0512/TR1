@@ -2,42 +2,44 @@ class CamadaEnlace:
 
     def __init__(self, config=None):
         self.config = config or {}
+        # Cabeçalho tem 1 byte para definir o tamanho do quadro na contagem de caracteres
         self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM = 1
         self.ultimos_quadros = []
 
     def _validar_bits(self, bits: str) -> bool:
+        # Valida se a string contém apenas bits (0 e 1) e não está vazia
         return isinstance(bits, str) and bits != "" and all(bit in "01" for bit in bits)
 
     def _tamanho_maximo_quadro(self) -> int:
+        # Obtém o tamanho máximo do quadro a partir da configuração, garantindo que seja um número inteiro positivo
         try:
             tamanho = int(self.config.get("frame_size", 4))
         except (TypeError, ValueError) as erro:
-            raise ValueError("O tamanho máximo do quadro deve ser um número inteiro.") from erro
+            raise ValueError("O tamanho máximo do quadro deve ser um número inteiro") from erro
 
         if tamanho <= 0:
-            raise ValueError("O tamanho máximo do quadro deve ser maior que zero.")
+            raise ValueError("O tamanho máximo do quadro deve ser maior que zero")
         return tamanho
 
-    # ENQUADRAMENTO POR CONTAGEM DE CARACTERES
+    # Enquadramento por contagem de caracteres
 
     def enquadramento_contagem_caracteres(self, dados_bits: str) -> str:
         if not self._validar_bits(dados_bits):
-            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+            raise ValueError("Os dados devem conter somente bits 0 e 1")
+        # Verifica se é multiplo de 8, para saber se ele recebeu um byte 
         if len(dados_bits) % 8 != 0:
-            raise ValueError("A contagem de caracteres exige uma quantidade inteira de bytes.")
+            raise ValueError("A contagem de caracteres exige uma quantidade inteira de bytes")
 
+        # Valida o tamanhos min e max dos quadros para contagem de caracteres
         tamanho_maximo = self._tamanho_maximo_quadro()
         if tamanho_maximo < 2:
-            raise ValueError(
-                "Na contagem de caracteres, o quadro deve ter pelo menos 2 bytes: "
-                "1 de cabeçalho e 1 de dados."
-            )
+            raise ValueError("Tamanho de quadro invalido para contagem de caracteres" )
         if tamanho_maximo > 255:
-            raise ValueError(
-                "O cabeçalho de 8 bits permite no máximo 255 bytes por quadro."
-            )
+            raise ValueError("Tamanho maximo de quadro atingido para contagem de caracteres")
 
+        # Divide os dados em bytes e cria quadros com cabeçalho de contagem
         bytes_dados = [dados_bits[i:i + 8] for i in range(0, len(dados_bits), 8)]
+        # Lógica matematica da contagem de caracteres
         capacidade_dados = tamanho_maximo - self.TAMANHO_EM_BYTES_CABECALHO_CONTAGEM
         quadros = []
 
@@ -52,9 +54,9 @@ class CamadaEnlace:
 
     def desenquadramento_contagem_caracteres(self, fluxo: str) -> tuple:
         if not self._validar_bits(fluxo):
-            return None, "Fluxo inválido: eram esperados apenas bits 0 e 1."
+            return None, "Fluxo inválido pois veio com valores diferentes de 0 e 1"
         if len(fluxo) % 8 != 0:
-            return None, "Fluxo de contagem incompleto: o tamanho não é múltiplo de 8 bits."
+            return None, "Fluxo incompleto o tamanho não é múltiplo de 8 bits"
 
         tamanho_maximo = self._tamanho_maximo_quadro()
         posicao = 0
@@ -63,18 +65,18 @@ class CamadaEnlace:
 
         while posicao < len(fluxo):
             if len(fluxo) - posicao < 8:
-                return None, "Cabeçalho de contagem incompleto."
+                return None, "Cabeçalho de contagem incompleto"
 
             total_bytes = int(fluxo[posicao:posicao + 8], 2)
             if total_bytes < 2:
-                return None, "Cabeçalho de contagem inválido."
+                return None, "Cabeçalho de contagem inválido"
             if total_bytes > tamanho_maximo:
-                return None, "O cabeçalho informa um quadro maior que o tamanho configurado."
+                return None, "O cabeçalho informa um quadro maior que o tamanho configurado"
 
             tamanho_bits = total_bytes * 8
             fim = posicao + tamanho_bits
             if fim > len(fluxo):
-                return None, "Quadro truncado: faltam bits indicados pelo cabeçalho."
+                return None, "Quadro com tamanho errado"
 
             quadro_atual = fluxo[posicao:fim]
             quadros.append(quadro_atual)
@@ -85,22 +87,20 @@ class CamadaEnlace:
         return "".join(cargas), None
 
 
-    # ENQUADRAMENTO INSERÇÃO DE BYTES
+    # Enquadramento por inserção de bytes
+
     FLAG_BYTE = "01111110"
     ESC_BYTE = "01111101"
     
     def enquadramento_insercao_bytes(self, dados_bits: str) -> str:
         if not self._validar_bits(dados_bits):
-            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+            raise ValueError("Os dados devem conter somente bits 0 e 1")
         if len(dados_bits) % 8 != 0:
-            raise ValueError("A inserção de bytes exige uma quantidade inteira de bytes.")
+            raise ValueError("A inserção de bytes exige uma quantidade inteira de bytes")
 
         tamanho_maximo = self._tamanho_maximo_quadro()
         if tamanho_maximo < 3:
-            raise ValueError(
-                "A inserção de bytes exige pelo menos 3 bytes por quadro: "
-                "FLAG inicial, um byte de dados e FLAG final."
-            )
+            raise ValueError("Tamanho de quadro inválido para inserção de bytes")
 
         bytes_dados = [dados_bits[i:i + 8] for i in range(0, len(dados_bits), 8)]
         quadros = []
@@ -124,11 +124,7 @@ class CamadaEnlace:
                 tamanho_atual = 2
 
             if tamanho_atual + custo > tamanho_maximo:
-                raise ValueError(
-                    "O tamanho configurado é pequeno demais para transportar um byte escapado. "
-                    "Use pelo menos 4 bytes por quadro."
-                )
-
+                raise ValueError("Tamanho de quadro insuficiente para enquadrar o byte atual")
             carga_codificada.extend(bytes_codificados)
             tamanho_atual += custo
 
@@ -138,7 +134,7 @@ class CamadaEnlace:
 
     def desenquadramento_insercao_bytes(self, fluxo: str) -> tuple:
         if not self._validar_bits(fluxo):
-            return None, "Fluxo inválido: eram esperados apenas bits 0 e 1."
+            return None, "Fluxo inválido pois veio com valores diferentes de 0 e 1"
         if len(fluxo) % 8 != 0:
             return None, "Fluxo de inserção de bytes incompleto."
 
@@ -150,7 +146,7 @@ class CamadaEnlace:
 
         while posicao < len(bytes_fluxo):
             if bytes_fluxo[posicao] != self.FLAG_BYTE:
-                return None, "FLAG inicial ausente ou corrompida."
+                return None, "FLAG inicial ausente ou corrompida"
 
             inicio_quadro = posicao
             posicao += 1
@@ -169,11 +165,11 @@ class CamadaEnlace:
                 if byte_atual == self.ESC_BYTE:
                     posicao += 1
                     if posicao >= len(bytes_fluxo):
-                        return None, "Byte ESC sem byte posterior."
+                        return None, "Byte ESC sem byte posterior"
 
                     byte_escapado = bytes_fluxo[posicao]
                     if byte_escapado not in (self.FLAG_BYTE, self.ESC_BYTE):
-                        return None, "Sequência de escape inválida."
+                        return None, "Sequência de escape inválida"
                     carga.append(byte_escapado)
                     posicao += 1
                     continue
@@ -182,13 +178,13 @@ class CamadaEnlace:
                 posicao += 1
 
             if not encontrou_fim:
-                return None, "FLAG final ausente ou corrompida."
+                return None, "FLAG final ausente ou corrompida"
 
             quantidade_bytes_quadro = fim_quadro - inicio_quadro + 1
             if quantidade_bytes_quadro > tamanho_maximo:
-                return None, "Foi recebido um quadro maior que o tamanho configurado."
+                return None, "Foi recebido um quadro maior que o tamanho configurado"
             if not carga:
-                return None, "Foi recebido um quadro sem carga útil."
+                return None, "Foi recebido um quadro sem carga útil"
 
             quadros.append("".join(bytes_fluxo[inicio_quadro:fim_quadro + 1]))
             cargas.append("".join(carga))
@@ -196,17 +192,15 @@ class CamadaEnlace:
         self.ultimos_quadros = quadros
         return "".join(cargas), None
 
-    # ENQUADRAMENTO iNSERÇÃO DE BITS
+    # Enquadramento por inserção de bits
 
     def enquadramento_insercao_bits(self, dados_bits: str) -> str:
         if not self._validar_bits(dados_bits):
-            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+            raise ValueError("Os dados devem conter somente bits 0 e 1")
 
         tamanho_maximo_bits = self._tamanho_maximo_quadro() * 8
         if tamanho_maximo_bits < 17:
-            raise ValueError(
-                "A inserção de bits precisa de espaço para duas FLAGS e ao menos um bit de dados."
-            )
+            raise ValueError("Tamanho de quadro inválido para inserção de bits")
 
         quadros = []
         indice = 0
@@ -237,7 +231,7 @@ class CamadaEnlace:
                 indice += 1
 
             if carga_codificada == "":
-                raise ValueError("O tamanho configurado é pequeno demais para formar um quadro.")
+                raise ValueError("O tamanho configurado é pequeno demais para formar um quadro")
 
             quadros.append(self.FLAG_BYTE + carga_codificada + self.FLAG_BYTE)
 
@@ -246,17 +240,17 @@ class CamadaEnlace:
 
     def desenquadramento_insercao_bits(self, fluxo: str) -> tuple:
         if not self._validar_bits(fluxo):
-            return None, "Fluxo inválido: eram esperados apenas bits 0 e 1."
+            return None, "Fluxo inválido pois veio com valores diferentes de 0 e 1"
         if not fluxo.startswith(self.FLAG_BYTE) or not fluxo.endswith(self.FLAG_BYTE):
-            return None, "FLAG inicial ou final ausente."
+            return None, "FLAG inicial ou final ausente"
 
         partes = fluxo.split(self.FLAG_BYTE)
         if partes[0] != "" or partes[-1] != "":
-            return None, "Existem bits fora das FLAGS."
+            return None, "Existem bits fora das FLAGS"
 
         cargas_codificadas = [parte for parte in partes[1:-1] if parte != ""]
         if not cargas_codificadas:
-            return None, "Nenhum quadro válido foi encontrado."
+            return None, "Nenhum quadro válido foi encontrado"
 
         tamanho_maximo_bits = self._tamanho_maximo_quadro() * 8
         cargas = []
@@ -264,7 +258,7 @@ class CamadaEnlace:
 
         for carga_codificada in cargas_codificadas:
             if len(carga_codificada) + 16 > tamanho_maximo_bits:
-                return None, "Foi recebido um quadro maior que o tamanho configurado."
+                return None, "Foi recebido um quadro maior que o tamanho configurado"
 
             mensagem_limpa = ""
             contador_uns = 0
@@ -279,9 +273,9 @@ class CamadaEnlace:
 
                     if contador_uns == 5:
                         if i + 1 >= len(carga_codificada):
-                            return None, "Inserção de bits incompleta após cinco bits 1."
+                            return None, "Inserção de bits incompleta após cinco bits 1"
                         if carga_codificada[i + 1] != "0":
-                            return None, "Foi encontrada uma sequência de bits inválida."
+                            return None, "Foi encontrada uma sequência de bits inválida"
                         i += 1
                         contador_uns = 0
                 else:
@@ -296,20 +290,22 @@ class CamadaEnlace:
         self.ultimos_quadros = quadros
         return "".join(cargas), None
 
-    # BIT DE PARIDADE PAR
+    # Bit de paridade par
 
     def enquadramento_paridade_par(self, dados_bits: str) -> str:
         if not self._validar_bits(dados_bits):
-            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+            raise ValueError("Os dados devem conter somente bits 0 e 1")
 
+        # Se o resto da contagem de bits 1 for 0, o bit de paridade é 0, caso contrário é 1
         bit_paridade = "0" if dados_bits.count("1") % 2 == 0 else "1"
         return dados_bits + bit_paridade
 
     def desenquadramento_paridade_par(self, quadro: str) -> tuple:
         if not self._validar_bits(quadro) or len(quadro) < 2:
-            return None, "Quadro de paridade inválido."
+            return None, "Quadro de paridade inválido"
+        # Verifica se a contagem de bits 1 é par
         if quadro.count("1") % 2 != 0:
-            return None, "A paridade par detectou erro na transmissão."
+            return None, "A paridade par detectou erro na transmissão"
         return quadro[:-1], None
 
     # CHECKSUM 
@@ -328,7 +324,7 @@ class CamadaEnlace:
 
     def enquadramento_checksum(self, dados_bits: str) -> str:
         if not self._validar_bits(dados_bits):
-            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+            raise ValueError("Os dados devem conter somente bits 0 e 1")
 
         soma = self._soma_blocos_8bits(dados_bits)
         checksum_bits = format(soma ^ 255, "08b")
@@ -336,10 +332,10 @@ class CamadaEnlace:
 
     def desenquadramento_checksum(self, quadro: str) -> tuple:
         if not self._validar_bits(quadro) or len(quadro) < 9:
-            return None, "Quadro de checksum inválido."
+            return None, "Quadro de checksum inválido"
 
         if self._soma_blocos_8bits(quadro) != 255:
-            return None, "O checksum detectou erro na transmissão."
+            return None, "O checksum detectou erro na transmissão"
         return quadro[:-8], None
     
     # CRC-32 
@@ -365,89 +361,83 @@ class CamadaEnlace:
 
     def enquadramento_crc(self, dados_bits: str) -> str:
         if not self._validar_bits(dados_bits):
-            raise ValueError("Os dados devem conter somente bits 0 e 1.")
+            raise ValueError("Os dados devem conter somente bits 0 e 1")
         return dados_bits + self._calcula_crc(dados_bits, self.POLINOMIO_CRC32)
 
     def desenquadramento_crc(self, quadro: str) -> tuple:
         if not self._validar_bits(quadro):
-            return None, "Quadro CRC inválido."
+            return None, "Quadro CRC inválido"
 
         grau = len(self.POLINOMIO_CRC32) - 1
         if len(quadro) <= grau:
-            return None, "Quadro CRC incompleto."
+            return None, "Quadro CRC incompleto"
 
         resto = self._divisao_crc(quadro, self.POLINOMIO_CRC32)
         if "1" in resto:
-            return None, "O CRC-32 detectou erro na transmissão."
+            return None, "O CRC-32 detectou erro na transmissão"
         return quadro[:-grau], None
 
-    # HAMMING 
+  # HAMMING 
 
-    def _codificar_hamming_8bits(self, dados_8bits: str) -> str:
-        quadro = ["0"] * 12
+    def _calcular_r_hamming(self, m: int) -> int:
+        r = 0
+        while (2 ** r) < (m + r + 1):
+            r += 1
+        return r
+
+    def enquadramento_hamming(self, dados_bits: str) -> str:
+        if not self._validar_bits(dados_bits):
+            raise ValueError("Os dados devem conter somente bits 0 e 1")
+        
+        m = len(dados_bits)
+        r = self._calcular_r_hamming(m)
+        n = m + r
+        quadro = ["0"] * n
+
+        # Preenche os dados pulando as posições que são potências de 2
         indice_dado = 0
-
-        for posicao in range(1, 13):
-            if (posicao & (posicao - 1)) != 0:
-                quadro[posicao - 1] = dados_8bits[indice_dado]
+        for i in range(1, n + 1):
+            if (i & (i - 1)) != 0:
+                quadro[i - 1] = dados_bits[indice_dado]
                 indice_dado += 1
 
-        for posicao_paridade in (1, 2, 4, 8):
+        # Calcula a paridade dinamicamente para qualquer quantidade de 'r' bits
+        for p in range(r):
+            posicao_paridade = 2 ** p
             paridade = 0
-            for posicao in range(1, 13):
-                if posicao & posicao_paridade:
-                    paridade ^= int(quadro[posicao - 1])
+            for i in range(1, n + 1):
+                if i & posicao_paridade:
+                    paridade ^= int(quadro[i - 1])
             quadro[posicao_paridade - 1] = str(paridade)
 
         return "".join(quadro)
 
-    def enquadramento_hamming(self, dados_bits: str) -> str:
-        if not self._validar_bits(dados_bits):
-            raise ValueError("Os dados devem conter somente bits 0 e 1.")
-        if len(dados_bits) % 8 != 0:
-            raise ValueError("O Hamming exige dados em blocos completos de 8 bits.")
-
-        return "".join(
-            self._codificar_hamming_8bits(dados_bits[i:i + 8])
-            for i in range(0, len(dados_bits), 8)
-        )
-
     def desenquadramento_hamming(self, quadro: str) -> tuple:
         if not self._validar_bits(quadro):
-            return None, "Quadro Hamming inválido."
-        if len(quadro) % 12 != 0:
-            return None, "Quadro Hamming incompleto"
+            return None, "Quadro Hamming inválido"
 
-        dados_recuperados = []
-        posicoes_corrigidas = []
+        n = len(quadro)
+        bloco = list(quadro)
+        sindrome = 0
 
-        for inicio in range(0, len(quadro), 12):
-            bloco = list(quadro[inicio:inicio + 12])
-            sindrome = 0
-
-            for posicao in range(1, 13):
-                if bloco[posicao - 1] == "1":
-                    sindrome ^= posicao
-
-            if sindrome != 0:
-                if sindrome > 12:
-                    return None, (
-                        "O Hamming calculou uma posição fora do bloco. "
-                        "Pode ter ocorrido mais de um erro no mesmo bloco."
-                    )
-
-                bloco[sindrome - 1] = "0" if bloco[sindrome - 1] == "1" else "1"
-                posicoes_corrigidas.append(inicio + sindrome)
-
-            for posicao in range(1, 13):
-                if (posicao & (posicao - 1)) != 0:
-                    dados_recuperados.append(bloco[posicao - 1])
+        # O cálculo da Síndrome engloba a mensagem inteira de uma vez
+        for i in range(1, n + 1):
+            if bloco[i - 1] == "1":
+                sindrome ^= i
 
         aviso = None
-        if len(posicoes_corrigidas) == 1:
-            aviso = f"Hamming corrigiu o bit da posição {posicoes_corrigidas[0]}."
-        elif len(posicoes_corrigidas) > 1:
-            lista = ", ".join(str(posicao) for posicao in posicoes_corrigidas)
-            aviso = f"Hamming corrigiu os bits das posições {lista}."
+        if sindrome != 0:
+            if sindrome > n:
+                return None, "Erro detectado, mas não é possivel corrigir com Hamming"
+
+            # Corrige o 1 único bit de erro que ele encontrou em toda a mensagem
+            bloco[sindrome - 1] = "0" if bloco[sindrome - 1] == "1" else "1"
+            aviso = f"Hamming corrigiu o bit da posição {sindrome}."
+
+        # Extrai os dados puros das posições que não são potências de 2
+        dados_recuperados = []
+        for i in range(1, n + 1):
+            if (i & (i - 1)) != 0:
+                dados_recuperados.append(bloco[i - 1])
 
         return "".join(dados_recuperados), aviso
