@@ -1,55 +1,22 @@
 import socket
-import pickle
+import struct
+import numpy as np
 
-from codigo_enlace import camada_enlace  
-from codigo_fisica import camada_fisica
 
 class Cliente:
-    def __init__(self):
-        self.enlace = camada_enlace.CamadaEnlace()
-    
-    # --- FUNÇÃO TRADUTORA (Aplicação) ---
-    def texto_para_bits(self, texto: str) -> str:
-        """Converte uma string de texto em uma string de zeros e uns (ASCII)"""
-        bits = ''.join(format(ord(letra), '08b') for letra in texto)
-        return bits
+    CABECALHO_TAMANHO = 4
 
-    def send_message(self, array,host='localhost', port=8082):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_address = (host, port)
-        sock.connect(server_address)
-        
+    def send_message(self, array, host="localhost", port=8082):
+        sinal = np.asarray(array, dtype=np.float32)
+        dados = sinal.tobytes()
+        cabecalho = struct.pack("!I", len(dados))
+
         try:
-            # 1. Pega a mensage do usuário via terminal
-            
-            # 2. Camada de Aplicação (Texto -> Bits)
-            # dados_bits = self.texto_para_bits(mensage)
-                        
-            # 3. Camada de Enlace TX (Vamos usar Inserção de Bits + CRC como exemplo)
-            # quadro_com_erro = self.enlace.enquadramento_crc(dados_bits)
-            # quadro_final = self.enlace.enquadramento_insercao_bits(quadro_com_erro)
-            
-            # print(f"[Enlace TX] Quadro blindado gerado: {quadro_final}")
-            # print("Enviando pelo socket...............")
-            
-            # 4. Envia para o Servidor (O Socket só aceita bytes, então encodamos a string de bits)
-            print("enviando",array)
-            sock.sendall(array.tobytes())
-            
-            # Recebe a resposta do servidor para saber se chegou bem
-            # resposta = sock.recv(2048)
-            # print(f"[Servidor Respondeu]: {resposta.decode()}")
-            
-        except socket.error as e: 
-            print("Socket error: %s" % str(e)) 
-        finally:
-            sock.close()
-
-if __name__ == "__main__":
-    cliente = Cliente()
-    cliente.send_message()
-    aa = "a"
-    
-    msgA = camada_fisica.NrzPolar().modulation(4,aa)
-    cliente.send_message(message=msgA)
-
+            with socket.create_connection((host, port), timeout=5) as sock:
+                sock.sendall(cabecalho)
+                sock.sendall(dados)
+            return True, None
+        except OSError as erro:
+            mensagem = f"Não foi possível enviar o sinal: {erro}"
+            print(mensagem)
+            return False, mensagem

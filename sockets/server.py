@@ -1,8 +1,11 @@
 import socket
+import struct
 import numpy as np
 
 
 class Servidor:
+    CABECALHO_TAMANHO = 4
+
     def __init__(self):
         self.callback = None
         self.sock = None
@@ -10,55 +13,50 @@ class Servidor:
     def set_callback(self, callback):
         self.callback = callback
 
-    def start(self, host="localhost", port=8082):
-        BUFFER_SIZE = 4096
+    def _receber_exatamente(self, conexao, quantidade):
+        dados = bytearray()
+        while len(dados) < quantidade:
+            pacote = conexao.recv(quantidade - len(dados))
+            if not pacote:
+                return None
+            dados.extend(pacote)
+        return bytes(dados)
 
+    def start(self, host="localhost", port=8082):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
         self.sock.bind((host, port))
         self.sock.listen(3)
 
         print(f"Servidor iniciado na porta {port}")
 
         while True:
-
-            print("Esperando conexão...")
-
             client, address = self.sock.accept()
-
             print(f"Cliente conectado: {address}")
 
             try:
-                dados = bytearray()
+                cabecalho = self._receber_exatamente(client, self.CABECALHO_TAMANHO)
+                if cabecalho is None:
+                    raise ConnectionError("O cabeçalho do sinal não foi recebido por completo.")
 
-                while True:
+                tamanho_dados = struct.unpack("!I", cabecalho)[0]
+                if tamanho_dados <= 0:
+                    raise ValueError("O sinal recebido está vazio.")
+                if tamanho_dados % np.dtype(np.float32).itemsize != 0:
+                    raise ValueError("O tamanho recebido não corresponde a valores float32.")
 
-                    pacote = client.recv(BUFFER_SIZE)
+                dados = self._receber_exatamente(client, tamanho_dados)
+                if dados is None:
+                    raise ConnectionError("O sinal foi recebido de forma incompleta.")
 
-                    if not pacote:
-                        break
-
-                    dados.extend(pacote)
-
-                print(f"Recebidos {len(dados)} bytes.")
-
-                # Se estiver enviando um numpy.ndarray
-                sinal = np.frombuffer(dados, dtype=np.float32)
-
-                print(sinal)
+                sinal = np.frombuffer(dados, dtype=np.float32).copy()
+                print(f"Recebidas {len(sinal)} amostras float32.")
 
                 if self.callback is not None:
                     self.callback(sinal)
 
-            except Exception as e:
-                print(e)
-
+            except Exception as erro:
+                print(f"Erro no servidor: {erro}")
             finally:
                 client.close()
                 print("Conexão encerrada.")
-
-
-if __name__ == "__main__":
-    servidor = Servidor()
-    servidor.start()
