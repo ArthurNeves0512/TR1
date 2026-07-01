@@ -6,7 +6,8 @@ from gi.repository import Gtk
 class ConfigurationBox:
     def __init__(self):
         self.config = {
-            "modulation": "Nrz Polar",
+            "digital_modulation": "Nrz Polar",
+            "carrier_modulation": "Nenhuma (Usar Digital)",
             "framming_type": "Contagem de Caracteres",
             "error_control": "Paridade Par",
             "voltage_level": 5,
@@ -32,30 +33,32 @@ class ConfigurationBox:
     def set_on_start_callback(self, callback):
         self.on_start_callback = callback
 
+
     def setup_digital_modulation(self) -> Gtk.ComboBoxText:
         cb = Gtk.ComboBoxText()
         for m in ["Nrz Polar", "Bipolar", "Manchester"]:
             cb.append_text(m)
         cb.set_active(0)
-        cb.connect("changed", self.update_modulation)
+        cb.connect("changed", self.set_digital_modulation)
         return cb
 
     def setup_analog_modulation(self) -> Gtk.ComboBoxText:
-        cb = Gtk.ComboBoxText()
-        cb.append_text("Nenhuma (Usar Digital)")
-        for m in ["ASK", "FSK", "QPSK", "16-QAM"]:
-            cb.append_text(m)
-        cb.set_active(0)
-        cb.connect("changed", self.update_modulation)
-        return cb
+            cb = Gtk.ComboBoxText()
+            cb.append_text("Nenhuma (Usar Digital)")
+            for m in ["ASK", "FSK", "QPSK", "16-QAM"]:
+                cb.append_text(m)
+            cb.set_active(0)
+            cb.connect("changed", self.set_carrier_modulation)
+            return cb
 
-    def update_modulation(self, widget):
-        analog_val = self.analog_mod_comboBox.get_active_text()
-        if analog_val and analog_val != "Nenhuma (Usar Digital)":
-            self.config["modulation"] = analog_val
-        else:
-            self.config["modulation"] = self.digital_mod_comboBox.get_active_text()
-        print("Modulação definida no Config:", self.config["modulation"])
+    def set_digital_modulation(self, widget):
+        self.config["digital_modulation"] = widget.get_active_text()
+        print("Codificação banda-base definida:", self.config["digital_modulation"])
+
+    def set_carrier_modulation(self, widget):
+        self.config["carrier_modulation"] = widget.get_active_text()
+        print("Modulação por portadora definida:", self.config["carrier_modulation"])
+
 
     def setup_detecting_or_correcting_error_comboBox(self) -> Gtk.ComboBoxText:
         cb = Gtk.ComboBoxText()
@@ -124,6 +127,8 @@ class ConfigurationBox:
             return
 
         try:
+            self.config["digital_modulation"] = self.digital_mod_comboBox.get_active_text()
+            self.config["carrier_modulation"] = self.analog_mod_comboBox.get_active_text()
             self.config["voltage_level"] = int(self.voltageLevelInputText.get_text())
             self.config["frame_size"] = int(self.frameSizeInputText.get_text())
             self.config["media_erro"] = float(self.mediaErrorInputText.get_text())

@@ -139,7 +139,10 @@ class MaquinaEstados:
         return bits_com_edc + ("0" * padding)
 
     def _adicionar_padding_modulacao(self, bits_enquadrados):
-        modulacao = self.config.get("modulation")
+        modulacao = self.config.get(
+            "carrier_modulation",
+            "Nenhuma (Usar Digital)",
+        )
         bits_por_simbolo = 1
         if modulacao == "QPSK":
             bits_por_simbolo = 2
@@ -167,17 +170,43 @@ class MaquinaEstados:
         bits_para_enquadrar = self._adicionar_padding_enlace(self.bits_com_edc)
         self.msg_enquadrada = self.execute_framming(bits_para_enquadrar, True)
         self.quadros_tx = list(self.enlace.ultimos_quadros)
-        self.msg_enquadrada_visual = " | ".join(self.quadros_tx)
+        self.msg_enquadrada_visual = "\n".join(
+            f"Quadro {indice} ({len(quadro) // 8} bytes): {quadro}"
+            for indice, quadro in enumerate(self.quadros_tx, start=1)
+        )
 
-        # Evita que QPSK e 16-QAM adicionem bits que o receptor desconhece.
-        self.msg_para_modular = self._adicionar_padding_modulacao(self.msg_enquadrada)
-        self.msg_modulation = np.asarray(
-            self.execute_modulation(self.msg_para_modular, True),
+        # Primeira etapa da camada física: codificação em banda-base.
+        self.sinal_banda_base = np.asarray(
+            self.execute_digital_modulation(self.msg_enquadrada, True),
             dtype=np.float32,
         )
 
+        # Segunda etapa opcional: modulação por portadora.
+        # As classes ASK/FSK/QPSK/16-QAM recebem os bits enquadrados. Elas não
+        # recebem diretamente o vetor de tensões NRZ/Manchester/Bipolar.
+        portadora = self.config.get(
+            "carrier_modulation",
+            "Nenhuma (Usar Digital)",
+        )
+
+        if portadora == "Nenhuma (Usar Digital)":
+            self.config["padding_modulacao"] = 0
+            self.msg_para_modular = self.msg_enquadrada
+            self.sinal_portadora = None
+            self.msg_modulation = self.sinal_banda_base
+        else:
+            self.msg_para_modular = self._adicionar_padding_modulacao(
+                self.msg_enquadrada
+            )
+            self.sinal_portadora = np.asarray(
+                self.execute_carrier_modulation(self.msg_para_modular, True),
+                dtype=np.float32,
+            )
+            self.msg_modulation = self.sinal_portadora
+
         plt.close("all")
 
+        # O ruído é aplicado somente ao sinal que realmente atravessa o meio.
         if sigma_erro != 0 or media_erro != 0:
             ruido = np.random.normal(
                 media_erro,
@@ -185,38 +214,52 @@ class MaquinaEstados:
                 len(self.msg_modulation),
             ).astype(np.float32)
             msg_final = (self.msg_modulation + ruido).astype(np.float32)
-
-            if self.config["modulation"] in ["ASK", "FSK", "QPSK", "16-QAM"]:
-                plot_sinal_analogico(
-                    self.msg_modulation,
-                    sinal_ruidoso=msg_final,
-                    titulo=f"Sinal {self.config['modulation']} (Com Ruído)",
-                )
-            else:
-                plot_sinal_digital(
-                    self.msg_modulation,
-                    sinal_ruidoso=msg_final,
-                    titulo=f"Sinal {self.config['modulation']} (Com Ruído)",
-                )
         else:
             msg_final = self.msg_modulation.astype(np.float32)
-            if self.config["modulation"] in ["ASK", "FSK", "QPSK", "16-QAM"]:
-                plot_sinal_analogico(
-                    msg_final,
-                    titulo=f"Sinal {self.config['modulation']} Limpo",
-                )
-            else:
-                plot_sinal_digital(
-                    msg_final,
-                    titulo=f"Sinal {self.config['modulation']} Limpo",
-                )
+
+        digital = self.config.get("digital_modulation", "Nrz Polar")
+
+        if portadora == "Nenhuma (Usar Digital)":
+            plot_sinal_digital(
+                self.sinal_banda_base,
+                sinal_ruidoso=msg_final if (sigma_erro != 0 or media_erro != 0) else None,
+                titulo=f"Sinal banda-base {digital}",
+            )
+        else:
+            # Mostra a saída intermediária do codificador banda-base.
+            plot_sinal_digital(
+                self.sinal_banda_base,
+                titulo=f"Sinal banda-base {digital}",
+            )
+            # Mostra o sinal final enviado ao meio de comunicação.
+            plot_sinal_analogico(
+                self.sinal_portadora,
+                sinal_ruidoso=msg_final if (sigma_erro != 0 or media_erro != 0) else None,
+                titulo=f"Sinal por portadora {portadora}",
+            )
 
         plt.show(block=False)
         return msg_final
 
     def receving(self, array: np.ndarray):
         try:
-            self.msg_desmodularizada = self.execute_modulation(array, False)
+            portadora = self.config.get(
+                "carrier_modulation",
+                "Nenhuma (Usar Digital)",
+            )
+
+            if portadora == "Nenhuma (Usar Digital)":
+                self.sinal_banda_base_rx = np.asarray(array, dtype=np.float32)
+                self.msg_desmodularizada = self.execute_digital_modulation(
+                    self.sinal_banda_base_rx,
+                    False,
+                )
+            else:
+                self.sinal_portadora_rx = np.asarray(array, dtype=np.float32)
+                self.msg_desmodularizada = self.execute_carrier_modulation(
+                    self.sinal_portadora_rx,
+                    False,
+                )
 
             padding_modulacao = int(self.config.get("padding_modulacao", 0))
             if padding_modulacao < 0 or padding_modulacao > len(self.msg_desmodularizada):
@@ -290,82 +333,58 @@ class MaquinaEstados:
 
         raise ValueError(f"Enquadramento desconhecido: {metodo}")
 
-    def execute_modulation(self, bits_str, isSending: bool) -> np.ndarray:
-        voltage_level = int(self.config["voltage_level"])
-        modulation = self.config["modulation"]
+    def execute_digital_modulation(self, dados, isSending: bool):
+        voltage_level = float(self.config["voltage_level"])
+        modulation = self.config.get("digital_modulation", "Nrz Polar")
 
         if modulation == "Nrz Polar":
-            if isSending:
-                return camada_fisica.NrzPolar().modulation(
-                    voltageLevel=voltage_level,
-                    bits_str=bits_str,
-                )
-            return camada_fisica.NrzPolar().demodulation(
-                voltageLevel=voltage_level,
-                voltage_stream=bits_str,
-            )
+            classe = camada_fisica.NrzPolar()
+        elif modulation == "Bipolar":
+            classe = camada_fisica.Bipolar()
+        elif modulation == "Manchester":
+            classe = camada_fisica.Manchester()
+        else:
+            raise ValueError(f"Modulação digital desconhecida: {modulation}")
 
-        if modulation == "Bipolar":
-            if isSending:
-                return camada_fisica.Bipolar().modulation(
-                    voltageLevel=voltage_level,
-                    bits_str=bits_str,
-                )
-            return camada_fisica.Bipolar().demodulation(
+        if isSending:
+            return classe.modulation(
                 voltageLevel=voltage_level,
-                voltage_stream=bits_str,
+                bits_str=dados,
             )
+        return classe.demodulation(
+            voltageLevel=voltage_level,
+            voltage_stream=dados,
+        )
 
-        if modulation == "Manchester":
-            if isSending:
-                return camada_fisica.Manchester().modulation(
-                    voltageLevel=voltage_level,
-                    bits_str=bits_str,
-                )
-            return camada_fisica.Manchester().demodulation(
-                voltageLevel=voltage_level,
-                voltage_stream=bits_str,
-            )
+    def execute_carrier_modulation(self, dados, isSending: bool):
+        amplitude = float(self.config["voltage_level"])
+        modulation = self.config.get(
+            "carrier_modulation",
+            "Nenhuma (Usar Digital)",
+        )
 
         if modulation == "ASK":
+            classe = camada_fisica.ASK(amostras_por_bit=200)
             if isSending:
-                return camada_fisica.ASK(amostras_por_bit=200).modulation(
-                    self.config["voltage_level"],
-                    bits_str=bits_str,
-                )
-            return camada_fisica.ASK().demodulation(
-                amplitude=self.config["voltage_level"],
-                sinal_modulado=bits_str,
-            )
+                return classe.modulation(amplitude, bits_str=dados)
+            return classe.demodulation(amplitude, sinal_modulado=dados)
 
         if modulation == "FSK":
+            classe = camada_fisica.FSK(amostras_por_bit=200)
             if isSending:
-                return camada_fisica.FSK().modulation(
-                    self.config["voltage_level"],
-                    bits_str=bits_str,
-                )
-            return camada_fisica.FSK().demodulation(
-                amplitude=self.config["voltage_level"],
-                sinal_modulado=bits_str,
-            )
+                return classe.modulation(amplitude, bits_str=dados)
+            return classe.demodulation(amplitude, sinal_modulado=dados)
 
         if modulation == "QPSK":
+            classe = camada_fisica.QPSK(amostras_por_simbolo=200)
             if isSending:
-                return camada_fisica.QPSK().modulation(
-                    self.config["voltage_level"],
-                    bits_str=bits_str,
-                )
-            return camada_fisica.QPSK().demodulation(bits_str)
+                return classe.modulation(amplitude, bits_str=dados)
+            return classe.demodulation(dados)
 
         if modulation == "16-QAM":
+            classe = camada_fisica.QAM16(amostras_por_simbolo=200)
             if isSending:
-                return camada_fisica.QAM16().modulation(
-                    self.config["voltage_level"],
-                    bits_str=bits_str,
-                )
-            return camada_fisica.QAM16().demodulation(
-                self.config["voltage_level"],
-                bits_str=bits_str,
-            )
+                return classe.modulation(amplitude, bits_str=dados)
+            return classe.demodulation(amplitude, bits_str=dados)
 
-        raise ValueError(f"Modulação desconhecida: {modulation}")
+        raise ValueError(f"Modulação por portadora desconhecida: {modulation}")
