@@ -25,9 +25,11 @@ class Manchester:
         for i, bit in enumerate(bits_str):
             idx = i * 2
             if bit == '1':
+                # o sinal de clock esta implicito bem aqui, ja que cada bit dura um ciclo.
                 voltage_stream[idx] = voltageLevel
                 voltage_stream[idx + 1] = -voltageLevel
             else:
+                # o sinal de clock esta implicito bem aqui, ja que cada bit dura um ciclo.
                 voltage_stream[idx] = -voltageLevel
                 voltage_stream[idx + 1] = voltageLevel
 
@@ -70,7 +72,9 @@ class ASK:
         self.fc = fc
 
     def modulation(self, amplitude: float, bits_str: str) -> np.ndarray:
+        #cria 200 valores de 0 até 1 
         t = np.linspace(0, 1, self.amostras_por_bit, endpoint=False,dtype=np.float32)
+
         onda_portadora = amplitude * np.sin(2 * np.pi * self.fc *t)
         onda_morta = np.zeros(self.amostras_por_bit,dtype=np.float32)
 
@@ -125,7 +129,8 @@ class FSK:
         
         ref0 = amplitude * np.sin(2 * np.pi * self.fc0 * self.t)
         ref1 = amplitude * np.sin(2 * np.pi * self.fc1 * self.t)
-
+        #aqui a gente basicamente quer saber a média da diferenca entre cada amostra
+        #e para frequencias maiores, temos uma diferenca maior entre cada ponto
         derivada_0 = np.mean(np.abs(np.diff(ref0)))
         derivada_1 = np.mean(np.abs(np.diff(ref1)))
         limiar = (derivada_0 + derivada_1) / 2
@@ -147,15 +152,15 @@ class QPSK:
         self.fc = fc
         
         self.constelacao={
-            '00': {'I':-1,'Q':-1},
-            '01': {'I':-1,'Q':1},
-            '11': {'I':1,'Q':1},
-            '10': {'I':1,'Q':-1},
+            '00': {'I':1,'Q':1}, #π/4
+            '01': {'I':-1,'Q':1},#3π/4
+            '11': {'I':-1,'Q':-1},#5π/4
+            '10': {'I':1,'Q':-1},#7π/4
         }
         self.constelacao_rx = {
-            (-1, -1): '00',
+            (1, 1): '00',
             (-1,  1): '01',
-            ( 1,  1): '11',
+            ( -1,  -1): '11',
             ( 1, -1): '10',
         }
 
@@ -185,8 +190,6 @@ class QPSK:
         t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False, dtype=np.float32)
         cos = np.cos(2 * np.pi * self.fc * t)
         sen = -np.sin(2 * np.pi * self.fc * t)
-        idx_I_pico = np.argmax(cos)
-        idx_Q_pico = np.argmax(sen)
 
         bits = ""
         num_simbolos = len(sinal_recebido) // self.amostras_por_simbolo
@@ -196,11 +199,11 @@ class QPSK:
             fim = inicio + self.amostras_por_simbolo
             bloco = sinal_recebido[inicio:fim]
 
-            amostra_I = bloco[idx_I_pico]
-            amostra_Q = bloco[idx_Q_pico]
+            correlacao_I = np.dot(bloco,cos)
+            correlacao_Q = np.dot(bloco,sen)
             
-            I = 1 if amostra_I >= 0 else -1
-            Q = 1 if amostra_Q >= 0 else -1
+            I = 1 if correlacao_I >= 0 else -1
+            Q = 1 if correlacao_Q >= 0 else -1
 
             bits += self.constelacao_rx[(I, Q)]
 
@@ -256,7 +259,7 @@ class QAM16:
         cos = np.cos(2*np.pi*self.fc*t)
         sen = -np.sin(2*np.pi*self.fc*t)
         idx_I_pico = np.argmax(cos)
-        idx_Q_pico = np.argmax(sen)
+        idx_Q_pico = np.argqmax(sen)
 
         bits = ""
         num_simbolos = len(bits_str)//self.amostras_por_simbolo
