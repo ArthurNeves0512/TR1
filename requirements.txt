@@ -1,2 +1,4 @@
 pycairo==1.29.0
 PyGObject==3.56.3
+matplotlib
+numpy
