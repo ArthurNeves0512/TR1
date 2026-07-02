@@ -255,11 +255,14 @@ class QAM16:
         return sinal
 
     def demodulation(self, amplitude, bits_str):
+
+        #basicamente o que estamos fazendo é veja se nos index de picos do sen e cos se são parecidos com o do seu dado
         t = np.linspace(0, 1, self.amostras_por_simbolo, endpoint=False, dtype=np.float32)
         cos = np.cos(2*np.pi*self.fc*t)
         sen = -np.sin(2*np.pi*self.fc*t)
+        #pegamos o index do valor de pico, aqui para o cos por exemplo o index é sempre 0 
         idx_I_pico = np.argmax(cos)
-        idx_Q_pico = np.argqmax(sen)
+        idx_Q_pico = np.argmax(sen)
 
         bits = ""
         num_simbolos = len(bits_str)//self.amostras_por_simbolo
